@@ -10,8 +10,9 @@ NAMA :
 """
 
 #1 .Install & Import Library
-!pip install catboost
+#!pip install catboost
 
+import streamlit as st
 import pandas as pd
 import numpy as np
 from catboost import CatBoostRegressor
@@ -20,60 +21,91 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 """Kode diatas digunakan untuk menyiapkan proses analisis dan pemodelan data. Library Pandas dan NumPy digunakan untuk membaca dan mengolah data, sedangkan CatBoostRegressor digunakan sebagai model regresi berbasis Ordered Gradient Boosting. Fungsi train_test_split dipakai untuk membagi data menjadi data latih dan data uji, dan MAE, RMSE, serta R² digunakan untuk mengevaluasi kinerja model. Sementara itu, Matplotlib dan Seaborn digunakan untuk menampilkan hasil dalam bentuk grafik agar lebih mudah dipahami."""
 
 # 2. Load Dataset
-df = pd.read_csv("/content/drive/MyDrive/penjualan_tiket_pesawat.csv")
-df.head()
 
-# Informasi jumlah data
-jumlah_record = df.shape[0]
-jumlah_atribut = df.shape[1]
+st.title("Prediksi Penjualan Tiket Pesawat")
 
-print("Jumlah record:", jumlah_record)
-print("Jumlah atribut:", jumlah_atribut)
+uploaded_file = st.file_uploader("Upload dataset CSV", type="csv")
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+
+    st.write("Preview data:")
+    st.dataframe(df.head())
+
+    st.write("Ukuran data awal:", df.shape)
+    st.write("Jumlah record:", df.shape[0])
+    st.write("Jumlah atribut:", df.shape[1])
+
+else:
+    st.info("Silakan upload file CSV terlebih dahulu.")
 
 """Output “Jumlah record: 500” menunjukkan bahwa dataset yang digunakan terdiri dari 500 baris data, dimana setiap baris merepresentasikan satu data transaksi penjualan tiket pesawat. Sementara itu, output “Jumlah atribut: 9” menunjukkan bahwa dataset memiliki 9 kolom atau variabel, yang berisi informasi terkait transaksi seperti data penumpang, maskapai, waktu, dan harga. Informasi ini digunakan untuk memberikan gambaran awal mengenai ukuran dan struktur dataset sebelum dilakukan proses pembersihan data dan pemodelan regresi."""
 
 #3. DATA CLEANING (Pembersihan Data)
-print("Ukuran data awal:", df.shape)
+# ===== DATA CLEANING =====
+st.subheader("Data Cleaning")
 
-print("\nMissing value per kolom:")
-print(df.isnull().sum())
+# Ukuran data awal
+st.write("Ukuran data awal:", df.shape)
 
-print("\nJumlah data duplikat:", df.duplicated().sum())
+# Missing value per kolom
+st.write("Missing value per kolom:")
+st.dataframe(df.isnull().sum())
 
+# Cek data duplikat
+jumlah_duplikat = df.duplicated().sum()
+st.write("Jumlah data duplikat:", jumlah_duplikat)
+
+# Hapus data duplikat
 df = df.drop_duplicates()
 
+# Konversi kolom Date
 df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
-print("\nMissing value setelah cleaning:")
-print(df.isnull().sum())
+# Missing value setelah cleaning
+st.write("Missing value setelah cleaning:")
+st.dataframe(df.isnull().sum())
 
-print("\nUkuran data setelah cleaning:", df.shape)
+# Ukuran data setelah cleaning
+st.write("Ukuran data setelah cleaning:", df.shape)
 
+# Simpan hasil cleaning
 df.to_csv("data_cleaned.csv", index=False)
+st.success("Data hasil cleaning berhasil disimpan sebagai data_cleaned.csv")
+
 
 """Berdasarkan hasil pemeriksaan awal, dataset memiliki ukuran (500, 9) yang berarti terdiri dari 500 record dan 9 atribut. Hasil pengecekan missing value menunjukkan bahwa tidak terdapat nilai kosong pada seluruh kolom, sehingga data dinyatakan lengkap. Selain itu, hasil pemeriksaan data duplikat menunjukkan nilai 0, yang berarti tidak ditemukan data ganda dalam dataset. Setelah proses pembersihan data dilakukan, ukuran dataset tetap (500, 9), menandakan bahwa tidak ada data yang dihapus karena dataset sudah berada dalam kondisi bersih dan siap digunakan untuk tahap preprocessing dan pemodelan regresi."""
 
 #4. Preprocessing + Feature Engineering
+st.subheader("Preprocessing & Feature Engineering")
+# Ekstraksi fitur dari Date
 df["Year"] = df["Date"].dt.year
 df["Month"] = df["Date"].dt.month
 df["Day"] = df["Date"].dt.day
 df["Weekday"] = df["Date"].dt.weekday
 df["Is_Weekend"] = df["Weekday"].apply(lambda x: 1 if x >= 5 else 0)
-
 # Hapus kolom Date asli
 df = df.drop(columns=["Date"])
-
 # Simpan data hasil preprocessing
 df.to_csv("data_preprocessed.csv", index=False)
-df.head()
+st.success("Data hasil preprocessing berhasil disimpan sebagai data_preprocessed.csv")
+# Tampilkan preview data setelah preprocessing
+st.write("Preview data setelah preprocessing:")
+st.dataframe(df.head())
 
 """Pada tahap preprocessing, dilakukan feature engineering dengan mengekstraksi informasi dari atribut tanggal (Date) menjadi beberapa fitur baru, yaitu Year, Month, Day, Weekday, dan Is_Weekend. Fitur-fitur ini bertujuan untuk merepresentasikan informasi waktu transaksi secara lebih spesifik dan mudah dipahami oleh model regresi. Setelah proses ekstraksi selesai, kolom Date asli dihapus karena informasinya telah terwakili oleh fitur-fitur baru tersebut. Hasil preprocessing menunjukkan bahwa dataset kini memiliki atribut tambahan terkait waktu transaksi, sementara struktur data tetap rapi dan siap digunakan untuk tahap pemodelan."""
 
 #5. Tentukan Fitur Kategorikal
+st.subheader("Fitur Kategorikal")
 cat_features = ["City", "Gender", "Airline", "Payment_Method"]
+
+st.write("Fitur kategorikal yang digunakan:")
+st.write(cat_features)
+
 
 """Pada tahap ini ditentukan fitur-fitur yang bersifat kategorikal, yaitu City, Gender, Airline, dan Payment_Method. Penentuan ini dilakukan agar model CatBoost Regressor dapat mengenali dan mengolah data kategori dengan benar tanpa perlu dilakukan encoding manual. Dengan mendefinisikan fitur kategorikal secara eksplisit, model dapat memanfaatkan karakteristik data kategori secara optimal dalam proses pemodelan regresi.
 
@@ -81,67 +113,109 @@ MODEL 1 — Prediksi TOTAL
 """
 
 #6. Siapkan X & y
+st.subheader("Penentuan Variabel X dan y (Prediksi Total)")
+
 X_total = df.drop(columns=["Total"])
 y_total = df["Total"]
+
+st.write("Jumlah fitur (X):", X_total.shape[1])
+st.write("Jumlah data target (y):", y_total.shape[0])
+
 
 """Pada tahap ini, dataset dipisahkan menjadi variabel input (X) dan variabel target (y). Variabel X_total berisi seluruh fitur yang digunakan untuk melakukan prediksi, sedangkan variabel y_total berisi nilai Total yang menjadi target prediksi pada model regresi. Pemisahan ini dilakukan agar proses pelatihan model dapat fokus mempelajari hubungan antara fitur dan nilai target."""
 
 #7. Train-Test Split (75% – 25%)
+# ===== TRAIN-TEST SPLIT =====
+st.subheader("Pembagian Data (Train–Test Split)")
+
 X_train, X_test, y_train, y_test = train_test_split(
     X_total, y_total, test_size=0.25, random_state=42
 )
 
-# Simpan split dataset
+st.write("Jumlah data latih:", X_train.shape[0])
+st.write("Jumlah data uji:", X_test.shape[0])
+
+# Gabungkan kembali untuk disimpan
 train_total = pd.concat([X_train, y_train], axis=1)
 test_total = pd.concat([X_test, y_test], axis=1)
 
 train_total.to_csv("train_total.csv", index=False)
 test_total.to_csv("test_total.csv", index=False)
 
+st.success("Data train dan test berhasil disimpan (train_total.csv & test_total.csv)")
+
+
 """Pada tahap ini, data dibagi menjadi data latih (75%) dan data uji (25%). Data latih digunakan untuk melatih model regresi, sedangkan data uji digunakan untuk menguji kemampuan model dalam melakukan prediksi pada data yang belum pernah dilihat sebelumnya. Pembagian data ini bertujuan untuk mengevaluasi performa dan kemampuan generalisasi model. Hasil pembagian data kemudian disimpan dalam bentuk file CSV sebagai dokumentasi dan untuk memudahkan proses analisis lanjutan."""
 
 #8. Train CatBoost Regressor
-model_total = CatBoostRegressor(
-    iterations=800,
-    learning_rate=0.05,
-    depth=8,
-    loss_function='RMSE',
-    verbose=0
-)
+st.subheader("Training Model CatBoost Regressor (Prediksi Total)")
 
-model_total.fit(X_train, y_train, cat_features=cat_features)
+with st.spinner("Sedang melatih model CatBoost..."):
+    model_total = CatBoostRegressor(
+        iterations=800,
+        learning_rate=0.05,
+        depth=8,
+        loss_function="RMSE",
+        verbose=0
+    )
+
+    model_total.fit(
+        X_train,
+        y_train,
+        cat_features=cat_features
+    )
+
+st.success("Training model selesai")
+
 
 """Pada tahap ini dilakukan pelatihan model regresi menggunakan CatBoost Regressor dengan parameter yang telah ditentukan. Model dilatih menggunakan data latih untuk mempelajari pola dan hubungan antara fitur input dan nilai target. Penggunaan CatBoost Regressor memungkinkan model menangani fitur kategorikal secara langsung dan menghasilkan model regresi yang mampu melakukan prediksi secara akurat. Proses training ini menghasilkan model yang siap digunakan untuk tahap prediksi dan evaluasi."""
 
 #9. Prediksi + Simpan Hasil Prediksi
+# ===== PREDIKSI TOTAL =====
+st.subheader("Hasil Prediksi Total")
+
+# Prediksi data uji
 y_pred_total = model_total.predict(X_test)
 
+# Tabel hasil prediksi
 result_total = pd.DataFrame({
     "Actual_Total": y_test.values,
     "Predicted_Total": y_pred_total
 })
 
+# Simpan ke CSV
 result_total.to_csv("prediksi_total.csv", index=False)
-result_total.head()
 
-# VISUALISASI MODEL 1 (Scatter Plot))
+st.success("Hasil prediksi berhasil disimpan sebagai prediksi_total.csv")
 
-# Scatter Plot Actual vs Predicted (TOTAL)
-plt.figure(figsize=(6,6))
-sns.scatterplot(x=y_test, y=y_pred_total)
+# Tampilkan tabel hasil prediksi
+st.write("Contoh hasil prediksi:")
+st.dataframe(result_total.head())
 
-plt.xlabel("Actual Total")
-plt.ylabel("Predicted Total")
-plt.title("Actual vs Predicted - Total")
 
-plt.plot(
+st.subheader("Visualisasi Actual vs Predicted (Total)")
+
+fig, ax = plt.subplots(figsize=(6,6))
+
+sns.scatterplot(x=y_test, y=y_pred_total, ax=ax)
+
+ax.set_xlabel("Actual Total")
+ax.set_ylabel("Predicted Total")
+ax.set_title("Actual vs Predicted - Total")
+
+# Garis ideal
+ax.plot(
     [y_test.min(), y_test.max()],
     [y_test.min(), y_test.max()],
     'r--'
 )
 
-plt.savefig("scatter_total.png", dpi=300, bbox_inches="tight")
-plt.show()
+# Simpan gambar
+fig.savefig("scatter_total.png", dpi=300, bbox_inches="tight")
+
+# Tampilkan di Streamlit
+st.pyplot(fig)
+
 
 """Pada bagian ini, model yang telah dilatih digunakan untuk melakukan prediksi terhadap data uji sehingga diperoleh nilai prediksi Total. Hasil prediksi kemudian digabungkan dengan nilai aktual ke dalam sebuah tabel yang berisi perbandingan antara nilai sebenarnya (Actual_Total) dan nilai hasil prediksi (Predicted_Total). Tabel ini disimpan dalam bentuk file CSV sebagai dokumentasi hasil prediksi dan bahan analisis lebih lanjut.
 
@@ -150,18 +224,29 @@ Berdasarkan grafik yang dihasilkan, terlihat bahwa sebagian besar titik data ber
 """
 
 #10. Evaluasi + Simpan ke CSV
+# ===== EVALUASI MODEL TOTAL =====
+st.subheader("Evaluasi Model (Prediksi Total)")
+
+# Hitung metrik evaluasi
 mae = mean_absolute_error(y_test, y_pred_total)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred_total))
 r2 = r2_score(y_test, y_pred_total)
 
+# Simpan ke DataFrame
 eval_total = pd.DataFrame({
     "MAE": [mae],
     "RMSE": [rmse],
     "R2": [r2]
 })
 
+# Simpan ke CSV
 eval_total.to_csv("evaluasi_total.csv", index=False)
-eval_total
+
+st.success("Hasil evaluasi berhasil disimpan sebagai evaluasi_total.csv")
+
+# Tampilkan hasil evaluasi
+st.dataframe(eval_total)
+
 
 """Pada bagian ini dilakukan evaluasi kinerja model regresi dengan membandingkan nilai prediksi dengan nilai aktual pada data uji. Tiga metrik evaluasi yang digunakan adalah MAE (Mean Absolute Error), RMSE (Root Mean Squared Error), dan R² (Koefisien Determinasi). Nilai MAE mengukur rata-rata selisih absolut antara prediksi dan nilai sebenarnya, RMSE mengukur besarnya kesalahan dengan memberi penalti lebih besar pada kesalahan yang besar, sedangkan R² mengukur seberapa baik model menjelaskan variasi data. Hasil evaluasi kemudian disimpan dalam bentuk file CSV untuk dokumentasi.
 
@@ -170,29 +255,45 @@ Berdasarkan hasil evaluasi yang diperoleh, nilai MAE sebesar 68.239 menunjukkan 
 """
 
 #11. Feature Importance TOTAL
+# ===== FEATURE IMPORTANCE (TOTAL) =====
+st.subheader("Feature Importance (Prediksi Total)")
+
+# Ambil nilai feature importance
 importances = model_total.get_feature_importance()
 features = X_total.columns
 
+# Buat DataFrame
 fi_total = pd.DataFrame({
     "Feature": features,
     "Importance": importances
-})
+}).sort_values(by="Importance", ascending=False)
 
+# Simpan ke CSV
 fi_total.to_csv("feature_importance_total.csv", index=False)
-fi_total
+
+st.success("Feature importance berhasil disimpan sebagai feature_importance_total.csv")
+
+# Tampilkan tabel feature importance
+st.write("Tabel Feature Importance:")
+st.dataframe(fi_total)
 
 
-# Bar Plot
-importances = model_total.get_feature_importance()
-features = X_total.columns
+fig, ax = plt.subplots(figsize=(8,6))
 
-plt.figure(figsize=(8,6))
-sns.barplot(x=importances, y=features)
+sns.barplot(
+    x=fi_total["Importance"],
+    y=fi_total["Feature"],
+    ax=ax
+)
 
-plt.title("Feature Importance - Total")
+ax.set_title("Feature Importance - Total")
 
-plt.savefig("feature_importance_total.png", dpi=300, bbox_inches="tight")
-plt.show()
+# Simpan gambar
+fig.savefig("feature_importance_total.png", dpi=300, bbox_inches="tight")
+
+# Tampilkan di Streamlit
+st.pyplot(fig)
+
 
 """Pada tahap ini dilakukan analisis feature importance untuk mengetahui seberapa besar kontribusi masing-masing fitur dalam memprediksi nilai Total. Fungsi get_feature_importance() digunakan untuk mengambil nilai kepentingan setiap fitur dari model CatBoost yang telah dilatih. Nilai importance tersebut kemudian dipasangkan dengan nama fitur dan disimpan dalam bentuk tabel serta file CSV sebagai dokumentasi hasil analisis.
 
@@ -203,65 +304,110 @@ MODEL 2 — Prediksi TICKET PRICE
 """
 
 #12. Siapkan X & y
+# ===== PENENTUAN FITUR (X) DAN TARGET (y) =====
+st.subheader("Penentuan Variabel X dan y (Prediksi Ticket Price)")
+
 X_price = df.drop(columns=["Ticket_Price"])
 y_price = df["Ticket_Price"]
+
+st.write("Jumlah fitur (X):", X_price.shape[1])
+st.write("Jumlah data target (y):", y_price.shape[0])
+
 
 """Pada tahap ini, dataset kembali dipisahkan menjadi variabel input (X) dan variabel target (y) untuk tujuan prediksi harga tiket (Ticket_Price). Variabel X_price berisi seluruh fitur yang digunakan sebagai input model, sedangkan y_price berisi nilai Ticket_Price yang menjadi target prediksi. Pemisahan ini dilakukan agar model regresi dapat mempelajari hubungan antara fitur-fitur yang tersedia dengan harga tiket secara efektif."""
 
 #13. Train-Test Split (75% – 25%)
+# ===== TRAIN–TEST SPLIT (PREDIKSI TICKET PRICE) =====
+st.subheader("Pembagian Data (Train–Test Split) – Ticket Price")
+
 X_train2, X_test2, y_train2, y_test2 = train_test_split(
     X_price, y_price, test_size=0.25, random_state=42
 )
 
+st.write("Jumlah data latih:", X_train2.shape[0])
+st.write("Jumlah data uji:", X_test2.shape[0])
+
+# Gabungkan kembali untuk disimpan
 train_price = pd.concat([X_train2, y_train2], axis=1)
 test_price = pd.concat([X_test2, y_test2], axis=1)
 
+# Simpan ke CSV
 train_price.to_csv("train_price.csv", index=False)
 test_price.to_csv("test_price.csv", index=False)
+
+st.success("Data train dan test Ticket Price berhasil disimpan (train_price.csv & test_price.csv)")
+
 
 """Pada tahap ini, data dibagi menjadi data latih (75%) dan data uji (25%) untuk tujuan prediksi harga tiket (Ticket_Price). Data latih digunakan untuk melatih model agar dapat mempelajari pola hubungan antara fitur dan harga tiket, sedangkan data uji digunakan untuk mengevaluasi kinerja model pada data yang belum pernah dilihat sebelumnya. Hasil pembagian data kemudian disimpan dalam bentuk file CSV untuk memudahkan dokumentasi dan analisis lanjutan."""
 
 #14. Train CatBoost
-model_price = CatBoostRegressor(
-    iterations=800,
-    learning_rate=0.05,
-    depth=8,
-    loss_function='RMSE',
-    verbose=0
-)
+# ===== TRAINING MODEL CATBOOST REGRESSOR (TICKET PRICE) =====
+st.subheader("Training Model CatBoost Regressor (Prediksi Ticket Price)")
 
-model_price.fit(X_train2, y_train2, cat_features=cat_features)
+with st.spinner("Sedang melatih model CatBoost untuk Ticket Price..."):
+    model_price = CatBoostRegressor(
+        iterations=800,
+        learning_rate=0.05,
+        depth=8,
+        loss_function="RMSE",
+        verbose=0
+    )
+
+    model_price.fit(
+        X_train2,
+        y_train2,
+        cat_features=cat_features
+    )
+
+st.success("Training model Ticket Price selesai")
+
 
 """Pada tahap ini dilakukan pelatihan model CatBoost Regressor untuk memprediksi Ticket_Price menggunakan data latih yang telah disiapkan. Model dilatih agar dapat mempelajari hubungan antara fitur input dan harga tiket, dengan memanfaatkan kemampuan CatBoost dalam menangani fitur kategorikal secara langsung. Hasil dari proses training ini adalah model regresi yang siap digunakan untuk melakukan prediksi harga tiket pada data uji serta dievaluasi kinerjanya."""
 
 #15. Prediksi + Simpan ke CSV
+# ===== PREDIKSI TICKET PRICE =====
+st.subheader("Hasil Prediksi Ticket Price")
+
+# Prediksi data uji
 y_pred_price = model_price.predict(X_test2)
 
+# Tabel hasil prediksi
 result_price = pd.DataFrame({
     "Actual_Price": y_test2.values,
     "Predicted_Price": y_pred_price
 })
 
+# Simpan ke CSV
 result_price.to_csv("prediksi_price.csv", index=False)
-result_price.head()
+st.success("Hasil prediksi Ticket Price berhasil disimpan sebagai prediksi_price.csv")
 
+# Tampilkan contoh hasil
+st.write("Contoh hasil prediksi:")
+st.dataframe(result_price.head())
 
-# Scatter Plot Actual vs Predicted (TICKET PRICE)
-plt.figure(figsize=(6,6))
-sns.scatterplot(x=y_test2, y=y_pred_price)
+st.subheader("Visualisasi Actual vs Predicted (Ticket Price)")
 
-plt.xlabel("Actual Ticket Price")
-plt.ylabel("Predicted Ticket Price")
-plt.title("Actual vs Predicted - Ticket Price")
+fig, ax = plt.subplots(figsize=(6,6))
 
-plt.plot(
+sns.scatterplot(x=y_test2, y=y_pred_price, ax=ax)
+
+ax.set_xlabel("Actual Ticket Price")
+ax.set_ylabel("Predicted Ticket Price")
+ax.set_title("Actual vs Predicted - Ticket Price")
+
+# Garis ideal (y = x)
+ax.plot(
     [y_test2.min(), y_test2.max()],
     [y_test2.min(), y_test2.max()],
     'r--'
 )
 
-plt.savefig("scatter_ticket_price.png", dpi=300, bbox_inches="tight")
-plt.show()
+# Simpan gambar
+fig.savefig("scatter_ticket_price.png", dpi=300, bbox_inches="tight")
+
+# Tampilkan di Streamlit
+st.pyplot(fig)
+
 
 """Pada tahap ini, model CatBoost yang telah dilatih digunakan untuk melakukan prediksi harga tiket (Ticket_Price) pada data uji. Nilai hasil prediksi kemudian digabungkan dengan nilai aktual ke dalam sebuah tabel yang berisi perbandingan antara harga tiket sebenarnya dan harga tiket hasil prediksi. Tabel tersebut disimpan dalam bentuk file CSV sebagai dokumentasi hasil prediksi dan bahan analisis lanjutan.
 
@@ -274,17 +420,29 @@ Berdasarkan grafik yang dihasilkan, terlihat bahwa titik-titik data tersebar san
 
 #15. Evaluasi + Simpan CSV
 mae2 = mean_absolute_error(y_test2, y_pred_price)
+# ===== EVALUASI MODEL TICKET PRICE =====
+st.subheader("Evaluasi Model (Prediksi Ticket Price)")
+
+# Hitung metrik evaluasi
+mae2 = mean_absolute_error(y_test2, y_pred_price)
 rmse2 = np.sqrt(mean_squared_error(y_test2, y_pred_price))
 r22 = r2_score(y_test2, y_pred_price)
 
+# Simpan ke DataFrame
 eval_price = pd.DataFrame({
     "MAE": [mae2],
     "RMSE": [rmse2],
     "R2": [r22]
 })
 
+# Simpan ke CSV
 eval_price.to_csv("evaluasi_price.csv", index=False)
-eval_price
+
+st.success("Hasil evaluasi Ticket Price berhasil disimpan sebagai evaluasi_price.csv")
+
+# Tampilkan hasil evaluasi
+st.dataframe(eval_price)
+
 
 """Pada tahap ini dilakukan evaluasi kinerja model regresi untuk prediksi Ticket_Price dengan membandingkan nilai prediksi dan nilai aktual pada data uji. Tiga metrik evaluasi yang digunakan adalah MAE, RMSE, dan R². Hasil evaluasi disusun dalam bentuk tabel dan disimpan ke dalam file CSV sebagai dokumentasi dan bahan analisis performa model.
 
@@ -293,26 +451,44 @@ Berdasarkan hasil evaluasi, nilai MAE sebesar 30.720 menunjukkan bahwa rata-rata
 """
 
 #16. Feature Importance + Simpan CSV
+# ===== FEATURE IMPORTANCE (TICKET PRICE) =====
+st.subheader("Feature Importance (Prediksi Ticket Price)")
+
+# Ambil nilai feature importance
 importances2 = model_price.get_feature_importance()
 features2 = X_price.columns
 
+# Buat DataFrame dan urutkan
 fi_price = pd.DataFrame({
     "Feature": features2,
     "Importance": importances2
-})
+}).sort_values(by="Importance", ascending=False)
 
+# Simpan ke CSV
 fi_price.to_csv("feature_importance_price.csv", index=False)
-fi_price
 
+st.success("Feature importance Ticket Price berhasil disimpan sebagai feature_importance_price.csv")
 
-# Bar Plot Feature Importance (TICKET PRICE)
-plt.figure(figsize=(8,6))
-sns.barplot(x=importances2, y=X_price.columns)
+# Tampilkan tabel
+st.write("Tabel Feature Importance:")
+st.dataframe(fi_price)
 
-plt.title("Feature Importance - Ticket Price")
+fig, ax = plt.subplots(figsize=(8,6))
 
-plt.savefig("feature_importance_ticket_price.png", dpi=300, bbox_inches="tight")
-plt.show()
+sns.barplot(
+    x=fi_price["Importance"],
+    y=fi_price["Feature"],
+    ax=ax
+)
+
+ax.set_title("Feature Importance - Ticket Price")
+
+# Simpan gambar
+fig.savefig("feature_importance_ticket_price.png", dpi=300, bbox_inches="tight")
+
+# Tampilkan di Streamlit
+st.pyplot(fig)
+
 
 """Pada tahap ini dilakukan analisis feature importance untuk mengetahui kontribusi masing-masing fitur dalam memprediksi Ticket_Price. Nilai kepentingan setiap fitur diperoleh dari model CatBoost Regressor yang telah dilatih, kemudian disusun dalam bentuk tabel dan disimpan ke dalam file CSV sebagai dokumentasi. Selain itu, hasil feature importance divisualisasikan menggunakan bar chart untuk memudahkan interpretasi.
 
