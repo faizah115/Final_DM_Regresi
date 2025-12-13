@@ -23,8 +23,13 @@ import seaborn as sns
 """Kode diatas digunakan untuk menyiapkan proses analisis dan pemodelan data. Library Pandas dan NumPy digunakan untuk membaca dan mengolah data, sedangkan CatBoostRegressor digunakan sebagai model regresi berbasis Ordered Gradient Boosting. Fungsi train_test_split dipakai untuk membagi data menjadi data latih dan data uji, dan MAE, RMSE, serta R² digunakan untuk mengevaluasi kinerja model. Sementara itu, Matplotlib dan Seaborn digunakan untuk menampilkan hasil dalam bentuk grafik agar lebih mudah dipahami."""
 
 # 2. Load Dataset
-df = pd.read_csv("/content/drive/MyDrive/penjualan_tiket_pesawat.csv")
-df.head()
+st.title("Prediksi Penjualan Tiket Pesawat")
+
+uploaded_file = st.file_uploader("Upload dataset CSV", type="csv")
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("Preview data:")
+    st.dataframe(df.head())
 
 # Informasi jumlah data
 jumlah_record = df.shape[0]
