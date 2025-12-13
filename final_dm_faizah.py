@@ -24,6 +24,11 @@ import seaborn as sns
 """Kode diatas digunakan untuk menyiapkan proses analisis dan pemodelan data. Library Pandas dan NumPy digunakan untuk membaca dan mengolah data, sedangkan CatBoostRegressor digunakan sebagai model regresi berbasis Ordered Gradient Boosting. Fungsi train_test_split dipakai untuk membagi data menjadi data latih dan data uji, dan MAE, RMSE, serta R² digunakan untuk mengevaluasi kinerja model. Sementara itu, Matplotlib dan Seaborn digunakan untuk menampilkan hasil dalam bentuk grafik agar lebih mudah dipahami."""
 
 # 2. Load Dataset
+import streamlit as st
+import pandas as pd
+
+st.title("Prediksi Penjualan Tiket Pesawat")
+
 uploaded_file = st.file_uploader("Upload dataset CSV", type="csv")
 
 if uploaded_file is not None:
@@ -33,14 +38,12 @@ if uploaded_file is not None:
     st.dataframe(df.head())
 
     st.write("Ukuran data awal:", df.shape)
+    st.write("Jumlah record:", df.shape[0])
+    st.write("Jumlah atribut:", df.shape[1])
 
-    jumlah_record = df.shape[0]
-    jumlah_atribut = df.shape[1]
-
-    st.write("Jumlah record:", jumlah_record)
-    st.write("Jumlah atribut:", jumlah_atribut)
 else:
     st.info("Silakan upload file CSV terlebih dahulu.")
+
 
 """Output “Jumlah record: 500” menunjukkan bahwa dataset yang digunakan terdiri dari 500 baris data, dimana setiap baris merepresentasikan satu data transaksi penjualan tiket pesawat. Sementara itu, output “Jumlah atribut: 9” menunjukkan bahwa dataset memiliki 9 kolom atau variabel, yang berisi informasi terkait transaksi seperti data penumpang, maskapai, waktu, dan harga. Informasi ini digunakan untuk memberikan gambaran awal mengenai ukuran dan struktur dataset sebelum dilakukan proses pembersihan data dan pemodelan regresi."""
 
