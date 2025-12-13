@@ -42,10 +42,6 @@ if uploaded_file is not None:
 
 else:
     st.info("Silakan upload file CSV terlebih dahulu.")
-=======
-import streamlit as st
-import pandas as pd
-
 st.title("Prediksi Penjualan Tiket Pesawat")
 
 uploaded_file = st.file_uploader("Upload dataset CSV", type="csv")
