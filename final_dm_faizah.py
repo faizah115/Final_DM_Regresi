@@ -39,27 +39,6 @@ if uploaded_file is not None:
     st.write("Ukuran data awal:", df.shape)
     st.write("Jumlah record:", df.shape[0])
     st.write("Jumlah atribut:", df.shape[1])
-
-else:
-    st.info("Silakan upload file CSV terlebih dahulu.")
-
-import streamlit as st
-import pandas as pd
-
-st.title("Prediksi Penjualan Tiket Pesawat")
-
-uploaded_file = st.file_uploader("Upload dataset CSV", type="csv")
-
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-
-    st.write("Preview data:")
-    st.dataframe(df.head())
-
-    st.write("Ukuran data awal:", df.shape)
-    st.write("Jumlah record:", df.shape[0])
-    st.write("Jumlah atribut:", df.shape[1])
-
 else:
     st.info("Silakan upload file CSV terlebih dahulu.")
 
@@ -509,6 +488,7 @@ fig.savefig("feature_importance_ticket_price.png", dpi=300, bbox_inches="tight")
 
 # Tampilkan di Streamlit
 st.pyplot(fig)
+
 
 
 """Pada tahap ini dilakukan analisis feature importance untuk mengetahui kontribusi masing-masing fitur dalam memprediksi Ticket_Price. Nilai kepentingan setiap fitur diperoleh dari model CatBoost Regressor yang telah dilatih, kemudian disusun dalam bentuk tabel dan disimpan ke dalam file CSV sebagai dokumentasi. Selain itu, hasil feature importance divisualisasikan menggunakan bar chart untuk memudahkan interpretasi.
