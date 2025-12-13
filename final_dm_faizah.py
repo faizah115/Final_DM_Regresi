@@ -12,6 +12,7 @@ NAMA :
 #1 .Install & Import Library
 #!pip install catboost
 
+import streamlit as st
 import pandas as pd
 import numpy as np
 from catboost import CatBoostRegressor
