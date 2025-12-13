@@ -10,7 +10,7 @@ NAMA :
 """
 
 #1 .Install & Import Library
-!pip install catboost
+#!pip install catboost
 
 import pandas as pd
 import numpy as np
