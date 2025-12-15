@@ -1,5 +1,5 @@
 # =====================================================
-# STREAMLIT APP (FINAL - ANTI ERROR)
+# STREAMLIT APP - FINAL FIX (NO CATBOOST ERROR)
 # =====================================================
 import streamlit as st
 import pandas as pd
@@ -12,17 +12,17 @@ from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.impute import SimpleImputer
 
 # =====================================================
-# STREAMLIT CONFIG
+# CONFIG
 # =====================================================
 st.set_page_config(page_title="Prediksi Revenue Penjualan", layout="wide")
 st.title("📊 Aplikasi Prediksi Revenue Penjualan")
 
 # =====================================================
-# UPLOAD DATASET
+# UPLOAD DATA
 # =====================================================
 uploaded_file = st.file_uploader("Upload Dataset CSV", type=["csv"])
 if uploaded_file is None:
-    st.info("⬆️ Silakan upload dataset CSV terlebih dahulu")
+    st.info("Silakan upload dataset CSV")
     st.stop()
 
 # =====================================================
@@ -37,9 +37,10 @@ required_cols = [
     "Payment_Method", "Units_Sold", "Unit_Price",
     "Revenue", "Date"
 ]
+
 for col in required_cols:
     if col not in df.columns:
-        st.error(f"❌ Kolom '{col}' tidak ditemukan")
+        st.error(f"Kolom '{col}' tidak ditemukan")
         st.stop()
 
 df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
@@ -48,18 +49,19 @@ df = df.drop_duplicates()
 for col in ["Units_Sold", "Unit_Price", "Revenue"]:
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# Feature engineering date
+# Feature Engineering Date
 df["Year"] = df["Date"].dt.year
 df["Month"] = df["Date"].dt.month
 df["Day"] = df["Date"].dt.day
 df = df.drop(columns=["Date"])
 
-# =====================================================
-# KLASIFIKASI (Revenue Class)
-# =====================================================
-st.header("🔖 Model Klasifikasi Revenue")
+df = df.dropna()
 
-df = df.dropna(subset=["Revenue"])
+# =====================================================
+# KLASIFIKASI REVENUE
+# =====================================================
+st.header("🔖 Klasifikasi Revenue")
+
 df["Revenue_Class"] = pd.qcut(
     df["Revenue"].rank(method="first"),
     q=3,
@@ -73,7 +75,7 @@ y_cls = df["Revenue_Class"]
 
 cat_features = X_cls.select_dtypes(include="object").columns.tolist()
 
-Xc_train, _, yc_train, _ = train_test_split(
+X_train, X_test, y_train, y_test = train_test_split(
     X_cls, y_cls, test_size=0.25, random_state=42, stratify=y_cls
 )
 
@@ -84,12 +86,12 @@ cls_model = CatBoostClassifier(
     loss_function="MultiClass",
     verbose=0
 )
-cls_model.fit(Xc_train, yc_train, cat_features=cat_features)
+cls_model.fit(X_train, y_train, cat_features=cat_features)
 
 # =====================================================
-# REGRESI + ENSEMBLE
+# REGRESI
 # =====================================================
-st.header("💰 Model Regresi + Ensemble")
+st.header("💰 Regresi & Ensemble")
 
 X_reg = X_cls.copy()
 y_reg = df["Revenue"]
@@ -103,7 +105,7 @@ cat_reg = CatBoostRegressor(
 )
 cat_reg.fit(X_reg, y_reg, cat_features=cat_features)
 
-# Encoding utk regresi linier
+# Encoding untuk regresi linear
 X_enc = X_reg.copy()
 encoders = {}
 
@@ -122,7 +124,7 @@ lasso = Lasso(alpha=0.001).fit(X_enc, y_reg)
 # =====================================================
 # INPUT USER
 # =====================================================
-st.sidebar.header("🧾 Input Data Penjualan")
+st.sidebar.header("🧾 Input Data")
 
 product = st.sidebar.selectbox("Product Name", sorted(df["Product_Name"].unique()))
 category = st.sidebar.selectbox("Category", sorted(df["Category"].unique()))
@@ -132,12 +134,12 @@ payment = st.sidebar.selectbox("Payment Method", sorted(df["Payment_Method"].uni
 units = st.sidebar.number_input("Units Sold", min_value=1, value=1)
 price = st.sidebar.number_input("Unit Price", min_value=1.0, value=1000.0)
 
-year = st.sidebar.number_input("Year", value=2024)
+year = st.sidebar.number_input("Year", value=int(df["Year"].mode()[0]))
 month = st.sidebar.slider("Month", 1, 12, 1)
 day = st.sidebar.slider("Day", 1, 31, 1)
 
 # =====================================================
-# PREDIKSI
+# PREDIKSI (ANTI ERROR)
 # =====================================================
 if st.sidebar.button("🔮 Prediksi"):
     input_df = pd.DataFrame([{
@@ -152,19 +154,29 @@ if st.sidebar.button("🔮 Prediksi"):
         "Day": day
     }])
 
-    # Klasifikasi
+    # 🔴 WAJIB: SAMAKAN STRUKTUR
+    input_df = input_df[X_cls.columns]
+
+    # Pastikan numerik
+    for col in ["Units_Sold", "Unit_Price", "Year", "Month", "Day"]:
+        input_df[col] = pd.to_numeric(input_df[col], errors="coerce")
+
+    # ===== KLASIFIKASI =====
     pred_class = int(cls_model.predict(input_df)[0])
     pred_label = label_map[pred_class]
 
-    # Regresi CatBoost
+    # ===== REGRESI CATBOOST =====
     pred_cat = float(cat_reg.predict(input_df)[0])
 
-    # Regresi Linear Ensemble
+    # ===== REGRESI LINEAR ENSEMBLE =====
     input_enc = input_df.copy()
     for col in encoders:
         input_enc[col] = encoders[col].transform(input_enc[col].astype(str))
 
-    input_enc = pd.DataFrame(imputer.transform(input_enc), columns=input_enc.columns)
+    input_enc = pd.DataFrame(
+        imputer.transform(input_enc),
+        columns=input_enc.columns
+    )
 
     ensemble_pred = np.mean([
         pred_cat,
@@ -173,8 +185,9 @@ if st.sidebar.button("🔮 Prediksi"):
         lasso.predict(input_enc)[0]
     ])
 
+    # OUTPUT
     st.success("✅ Prediksi Berhasil")
-    st.markdown("### 🔖 Prediksi Kelas Revenue")
+    st.markdown("### 🔖 Kelas Revenue")
     st.markdown(f"## **{pred_label}**")
-    st.markdown("### 💰 Prediksi Revenue (Ensemble)")
+    st.markdown("### 💰 Prediksi Revenue")
     st.markdown(f"## **Rp {ensemble_pred:,.2f}**")
