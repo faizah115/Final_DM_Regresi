@@ -198,3 +198,30 @@ if st.button("⛽ Prediksi Konsumsi BBM"):
     input_df_B = pd.DataFrame([input_B])
     pred_bbm = rf_reg.predict(input_df_B)[0]
     st.success(f"🔋 Prediksi Konsumsi BBM: **{pred_bbm:.2f} km/l**")
+
+# =====================================================
+# SEGMENTASI KONSUMSI BBM
+# =====================================================
+segment_labels = ["Boros", "Sedang", "Hemat"]
+
+df_segment = pd.DataFrame({
+    "Aktual_BBM": y_test_B.values,
+    "Prediksi_BBM": y_pred_B
+})
+
+df_segment["Segment_BBM"] = pd.qcut(
+    df_segment["Prediksi_BBM"],
+    q=3,
+    labels=segment_labels
+)
+
+st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
+
+fig1, ax1 = plt.subplots()
+df_segment["Segment_BBM"].value_counts().reindex(segment_labels).plot(
+    kind="bar", ax=ax1
+)
+ax1.set_xlabel("Segment Konsumsi BBM")
+ax1.set_ylabel("Jumlah Motor")
+ax1.set_title("Distribusi Segmentasi Konsumsi BBM Motor")
+st.pyplot(fig1)
