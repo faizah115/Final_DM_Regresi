@@ -32,12 +32,18 @@ st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
 # =========================================================
 # UPLOAD DATASET
 # =========================================================
-uploaded = st.file_uploader(
-    "📂 Upload dataset motor_second_dataset.csv .Langsung UP csv saja abaikan eror(ini tidak eror)",
-    type=["csv"]
-)
+uploaded = st.file_uploader("📂 Upload Dataset Motor (CSV)", type=["csv"])
 
-if uploaded:
+if uploaded is not None:
+    df = pd.read_csv(uploaded)
+
+    st.success("Dataset berhasil dimuat")
+    st.write(df.head())
+
+else:
+    st.warning("Silakan upload file CSV terlebih dahulu")
+    st.stop()   # ⛔ HENTIKAN PROGRAM DI SINI
+
 
     # =====================================================
     # LOAD DATA
@@ -144,7 +150,6 @@ if uploaded:
 # ======================= BAGIAN B =====================
 # REGRESI KONSUMSI BBM (RANDOM FOREST)
 # =====================================================
-df = pd.read_csv(uploaded)
 st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
 
 from sklearn.ensemble import RandomForestRegressor
