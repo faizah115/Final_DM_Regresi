@@ -27,13 +27,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
+st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi) ")
+st.title("BAIKAN EROR INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA")
 
 # =========================================================
 # UPLOAD DATASET
 # =========================================================
 uploaded = st.file_uploader(
-    "📂 Upload dataset motor_second_dataset.csv ABAIKAN EROR INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA)",
+    "📂 Upload dataset motor_second_dataset.csv)",
     type=["csv"]
 )
 
