@@ -148,7 +148,11 @@ if st.button("🔍 Prediksi Kategori Harga"):
 # ======================= BAGIAN B =====================
 # REGRESI ENSEMBLE (RIDGE & LASSO)
 # =====================================================
-st.header("🅱️ Bagian B – Analisis Konsumsi BBM (Regresi Ridge & Lasso)")
+# =====================================================
+# ======================= BAGIAN B =====================
+# KLASIFIKASI KONSUMSI BBM (BOROS / SEDANG / HEMAT)
+# =====================================================
+st.header("🅱️ Bagian B – Klasifikasi Konsumsi BBM Motor")
 
 # =====================================================
 # VISUALISASI SEGMENTASI KONSUMSI BBM
@@ -157,89 +161,110 @@ st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
 
 fig_bbm, ax_bbm = plt.subplots()
 df["kategori_bbm"].value_counts().sort_index().plot(kind="bar", ax=ax_bbm)
-ax_bbm.set_title("Segmentasi Motor Berdasarkan Konsumsi BBM")
+ax_bbm.set_title("Segmentasi Konsumsi BBM Motor")
 ax_bbm.set_xlabel("Kategori Konsumsi BBM")
 ax_bbm.set_ylabel("Jumlah Motor")
 ax_bbm.set_xticklabels(["Boros", "Sedang", "Hemat"], rotation=0)
 st.pyplot(fig_bbm)
 
 # =====================================================
-# FEATURE & TARGET (REGRESI)
+# FEATURE & TARGET (KLASIFIKASI)
 # =====================================================
-fitur_regresi = [
+fitur_bbm = [
     "tahun",
     "odometer",
-    "pajak",
     "mesin",
-    "harga"
+    "harga",
+    "pajak"
 ]
 
-X_R = df[fitur_regresi]
-y_R = df["konsumsiBBM"]
+X_B = df[fitur_bbm]
+y_B = df["kategori_bbm"]   # target = Boros / Sedang / Hemat (encoded)
 
 # =====================================================
 # SPLIT DATA
 # =====================================================
-X_train_R, X_test_R, y_train_R, y_test_R = train_test_split(
-    X_R,
-    y_R,
+X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
+    X_B,
+    y_B,
     test_size=0.2,
-    random_state=42
+    random_state=42,
+    stratify=y_B
 )
 
 # =====================================================
-# SCALING DATA
+# SCALING
 # =====================================================
-scaler_R = StandardScaler()
-X_train_R_scaled = scaler_R.fit_transform(X_train_R)
-X_test_R_scaled  = scaler_R.transform(X_test_R)
+scaler_B = StandardScaler()
+X_train_B_scaled = scaler_B.fit_transform(X_train_B)
+X_test_B_scaled  = scaler_B.transform(X_test_B)
 
 # =====================================================
-# MODEL REGRESI
+# MODEL KLASIFIKASI (KNN)
 # =====================================================
-models_reg = {
-    "Ridge Regression": Ridge(alpha=1.0),
-    "Lasso Regression": Lasso(alpha=0.01)
-}
+knn_bbm = KNeighborsClassifier(n_neighbors=5)
+knn_bbm.fit(X_train_B_scaled, y_train_B)
 
 # =====================================================
 # EVALUASI MODEL
 # =====================================================
-st.subheader("📊 Evaluasi Model Regresi Konsumsi BBM")
+st.subheader("📊 Evaluasi Model Klasifikasi Konsumsi BBM")
 
-for name, model in models_reg.items():
-    model.fit(X_train_R_scaled, y_train_R)
-    y_pred_R = model.predict(X_test_R_scaled)
+y_pred_B = knn_bbm.predict(X_test_B_scaled)
 
-    r2 = r2_score(y_test_R, y_pred_R)
-    mae = mean_absolute_error(y_test_R, y_pred_R)
-
-    st.write(f"**{name}**")
-    st.write(f"R² Score : {r2:.3f}")
-    st.write(f"MAE      : {mae:.2f} km/l")
-    st.write("---")
+st.write("Accuracy :", accuracy_score(y_test_B, y_pred_B))
+st.text(classification_report(
+    y_test_B,
+    y_pred_B,
+    target_names=["Boros", "Sedang", "Hemat"]
+))
 
 # =====================================================
-# INPUT USER – ANALISIS KONSUMSI BBM
+# CONFUSION MATRIX
 # =====================================================
-st.subheader("🔍 Estimasi Konsumsi BBM Motor")
+cm_bbm = confusion_matrix(y_test_B, y_pred_B)
+
+fig_cm_bbm, ax_cm_bbm = plt.subplots()
+ax_cm_bbm.imshow(cm_bbm)
+ax_cm_bbm.set_title("Confusion Matrix – Konsumsi BBM")
+ax_cm_bbm.set_xlabel("Prediksi")
+ax_cm_bbm.set_ylabel("Aktual")
+ax_cm_bbm.set_xticks([0, 1, 2])
+ax_cm_bbm.set_yticks([0, 1, 2])
+ax_cm_bbm.set_xticklabels(["Boros", "Sedang", "Hemat"])
+ax_cm_bbm.set_yticklabels(["Boros", "Sedang", "Hemat"])
+
+for i in range(3):
+    for j in range(3):
+        ax_cm_bbm.text(j, i, cm_bbm[i, j], ha="center", va="center")
+
+st.pyplot(fig_cm_bbm)
+
+# =====================================================
+# INPUT USER – OUTPUT KATEGORI BBM
+# =====================================================
+st.subheader("🔍 Prediksi Kategori Konsumsi BBM Motor")
 
 input_B = {}
-
-for i, col in enumerate(X_R.columns):
+for i, col in enumerate(X_B.columns):
     input_B[col] = st.number_input(
         label=f"Input {col}",
         value=float(df[col].median()),
         key=f"B_{i}_{col}"
     )
 
-if st.button("🔍 Estimasi Konsumsi BBM"):
+if st.button("🔍 Prediksi Konsumsi BBM"):
     input_df_B = pd.DataFrame([input_B])
-    input_scaled_B = scaler_R.transform(input_df_B)
+    input_scaled_B = scaler_B.transform(input_df_B)
 
-    ridge_final = Ridge(alpha=1.0)
-    ridge_final.fit(X_train_R_scaled, y_train_R)
+    pred_B = knn_bbm.predict(input_scaled_B)[0]
 
-    bbm_pred = ridge_final.predict(input_scaled_B)[0]
+    label_map = {
+        0: "Boros",
+        1: "Sedang",
+        2: "Hemat"
+    }
 
-    st.success(f"⛽ Estimasi Konsumsi BBM: **{bbm_pred:.2f} km/l**")
+    st.success(
+        f"⛽ Prediksi Konsumsi BBM Motor: **{label_map[pred_B]}**"
+    )
