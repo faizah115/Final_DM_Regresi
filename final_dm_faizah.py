@@ -1,6 +1,6 @@
 # =====================================================
 # STREAMLIT APP
-# KLASIFIKASI + REGRESI + ENSEMBLE
+# KLASIFIKASI + REGRESI + ENSEMBLE + VISUALISASI LABEL
 # =====================================================
 
 import streamlit as st
@@ -21,7 +21,7 @@ from sklearn.impute import SimpleImputer
 # STREAMLIT CONFIG
 # =====================================================
 st.set_page_config(page_title="Analisis Penjualan", layout="wide")
-st.title(" Analisis Penjualan: Klasifikasi & Regresi + Ensemble")
+st.title("📊 Analisis Penjualan: Klasifikasi & Regresi + Ensemble")
 
 # =====================================================
 # UPLOAD DATASET
@@ -32,7 +32,7 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is None:
-    st.info("⬆Silakan upload file CSV untuk memulai analisis")
+    st.info("⬆️ Silakan upload file CSV untuk memulai analisis")
     st.stop()
 
 # =====================================================
@@ -42,7 +42,7 @@ df = pd.read_csv(uploaded_file, sep=None, engine="python")
 df.columns = df.columns.str.strip()
 df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-st.subheader("Data Awal")
+st.subheader("📄 Data Awal")
 st.dataframe(df.head())
 
 # =====================================================
@@ -66,18 +66,26 @@ df["Month"] = df["Date"].dt.month
 df["Day"]   = df["Date"].dt.day
 df = df.drop(columns=["Date"])
 
-st.success("Data cleaning & feature engineering selesai")
+st.success("✅ Data cleaning & feature engineering selesai")
 
 # =====================================================
 # ================= KLASIFIKASI =======================
 # =====================================================
-st.header(" Klasifikasi Revenue")
+st.header("🔷 Klasifikasi Revenue")
 
+# Target kelas
 df["Revenue_Class"] = pd.qcut(
     df["Revenue"],
     q=3,
     labels=[0, 1, 2]
 )
+
+# Label mapping
+label_map = {
+    0: "Rendah",
+    1: "Sedang",
+    2: "Tinggi"
+}
 
 X_cls = df.drop(columns=["Revenue", "Revenue_Class"])
 y_cls = df["Revenue_Class"]
@@ -102,16 +110,50 @@ cls_model = CatBoostClassifier(
 cls_model.fit(Xc_train, yc_train, cat_features=cat_features_cls)
 pred_cls = cls_model.predict(Xc_test)
 
-acc = accuracy_score(yc_test, pred_cls)
-st.write("### Accuracy Klasifikasi:", round(acc, 4))
-
-st.text("Classification Report")
-st.text(classification_report(yc_test, pred_cls))
-
+# Hasil klasifikasi
 hasil_klasifikasi = pd.DataFrame({
     "Actual_Class": yc_test.values,
     "Predicted_Class": pred_cls.flatten()
 })
+
+hasil_klasifikasi["Actual_Label"] = hasil_klasifikasi["Actual_Class"].map(label_map)
+hasil_klasifikasi["Predicted_Label"] = hasil_klasifikasi["Predicted_Class"].map(label_map)
+
+# =====================================================
+# EVALUASI KLASIFIKASI
+# =====================================================
+st.subheader("🎯 Evaluasi Klasifikasi")
+
+acc = accuracy_score(yc_test, pred_cls)
+st.write("**Accuracy:**", round(acc, 4))
+
+st.text("Classification Report")
+st.text(classification_report(yc_test, pred_cls))
+
+# =====================================================
+# VISUALISASI LABEL KLASIFIKASI
+# =====================================================
+st.subheader("📊 Distribusi Kelas Revenue (Aktual)")
+
+dist_actual = hasil_klasifikasi["Actual_Label"].value_counts().reset_index()
+dist_actual.columns = ["Kelas", "Jumlah"]
+st.bar_chart(dist_actual.set_index("Kelas"))
+
+st.subheader("📊 Perbandingan Kelas Aktual vs Prediksi")
+
+compare_df = pd.DataFrame({
+    "Aktual": hasil_klasifikasi["Actual_Label"].value_counts(),
+    "Prediksi": hasil_klasifikasi["Predicted_Label"].value_counts()
+}).fillna(0)
+
+st.bar_chart(compare_df)
+
+st.subheader("📄 Contoh Hasil Klasifikasi (Dengan Label)")
+st.dataframe(
+    hasil_klasifikasi[
+        ["Actual_Class", "Actual_Label", "Predicted_Class", "Predicted_Label"]
+    ].head(20)
+)
 
 st.download_button(
     "⬇️ Download Hasil Klasifikasi (CSV)",
@@ -123,7 +165,7 @@ st.download_button(
 # =====================================================
 # ================= REGRESI ===========================
 # =====================================================
-st.header("Regresi Revenue + Ensemble")
+st.header("🔶 Regresi Revenue + Ensemble")
 
 X_reg = df.drop(columns=["Revenue", "Revenue_Class"])
 y_reg = df["Revenue"]
@@ -182,7 +224,7 @@ pred_lr    = lr.predict(Xe_test)
 pred_ridge = ridge.predict(Xe_test)
 pred_lasso = lasso.predict(Xe_test)
 
-# ---- Ensemble Averaging ----
+# ---- Ensemble ----
 ensemble_pred = (
     pred_cat +
     pred_lr +
@@ -200,8 +242,7 @@ def eval_reg(y_true, y_pred):
         "R2": r2_score(y_true, y_pred)
     }
 
-st.subheader("Evaluasi Regresi")
-
+st.subheader("📈 Evaluasi Regresi")
 st.write("CatBoost Regressor:", eval_reg(yr_test, pred_cat))
 st.write("Ensemble Regression:", eval_reg(ye_test, ensemble_pred))
 
@@ -215,10 +256,10 @@ hasil_regresi = pd.DataFrame({
 })
 
 st.download_button(
-    "Download Hasil Regresi (CSV)",
+    "⬇️ Download Hasil Regresi (CSV)",
     hasil_regresi.to_csv(index=False),
     file_name="hasil_regresi_ensemble.csv",
     mime="text/csv"
 )
 
-st.success("Analisis selesai! Semua model berhasil dijalankan.")
+st.success("🎉 Analisis selesai. Klasifikasi & Regresi berhasil dijalankan.")
