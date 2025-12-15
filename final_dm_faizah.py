@@ -1,214 +1,224 @@
 # =====================================================
 # STREAMLIT APP
-# KLASIFIKASI + REGRESI + ENSEMBLE (CATBOOST)
+# KLASIFIKASI + REGRESI + ENSEMBLE
 # =====================================================
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.metrics import (
-    accuracy_score, classification_report, confusion_matrix,
+    accuracy_score, classification_report,
     mean_squared_error, mean_absolute_error, r2_score
 )
+from sklearn.impute import SimpleImputer
 
-st.set_page_config(
-    page_title="Analisis Tiket Pesawat",
-    layout="wide"
-)
-
-st.title("Analisis Klasifikasi & Regresi Harga Tiket Pesawat")
-st.write("CatBoost • Regresi • Ensemble Method")
+# =====================================================
+# STREAMLIT CONFIG
+# =====================================================
+st.set_page_config(page_title="Analisis Penjualan", layout="wide")
+st.title(" Analisis Penjualan: Klasifikasi & Regresi + Ensemble")
 
 # =====================================================
 # UPLOAD DATASET
 # =====================================================
 uploaded_file = st.file_uploader(
-    "Upload dataset CSV",
+    "Upload Dataset CSV",
     type=["csv"]
 )
 
 if uploaded_file is None:
-    st.info("Silakan upload file CSV untuk memulai analisis")
+    st.info("⬆Silakan upload file CSV untuk memulai analisis")
+    st.stop()
 
-else:
-    # =====================================================
-    # LOAD DATA
-    # =====================================================
-    df = pd.read_csv(uploaded_file)
+# =====================================================
+# LOAD DATA (AMAN)
+# =====================================================
+df = pd.read_csv(uploaded_file, sep=None, engine="python")
+df.columns = df.columns.str.strip()
+df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-    st.subheader(" Data Awal")
-    st.dataframe(df.head())
+st.subheader("Data Awal")
+st.dataframe(df.head())
 
-    st.write("Jumlah record:", df.shape[0])
-    st.write("Jumlah atribut:", df.shape[1])
+# =====================================================
+# DATA CLEANING
+# =====================================================
+df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+df = df.drop_duplicates()
 
-    # =====================================================
-    # DATA CLEANING
-    # =====================================================
-    st.subheader(" Data Cleaning")
-
-    st.write("Missing value per kolom:")
-    st.dataframe(df.isnull().sum())
-
-    st.write("Jumlah data duplikat:", df.duplicated().sum())
-
-    df = df.drop_duplicates()
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-
-    df_cleaned = df.copy()
-    df_cleaned.to_csv("data_cleaned.csv", index=False)
-
-    st.success("Data cleaned berhasil")
-
-    # =====================================================
-    # FEATURE ENGINEERING DATE
-    # =====================================================
-    df["Year"] = df["Date"].dt.year
-    df["Month"] = df["Date"].dt.month
-    df["Day"] = df["Date"].dt.day
-    df = df.drop(columns=["Date"])
-
-    # =====================================================
-    # KLASIFIKASI
-    # =====================================================
-    st.subheader("Klasifikasi Harga Tiket (CatBoost)")
-
-    df["Total_Class"] = pd.qcut(
-        df["Total"], q=3, labels=[0, 1, 2]
+num_cols = ["Units_Sold", "Unit_Price", "Revenue"]
+for col in num_cols:
+    df[col] = (
+        df[col].astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
     )
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    df_class = df.drop(columns=["Total"])
-    df_class.to_csv("data_preprocessed_classification.csv", index=False)
+# FEATURE ENGINEERING DATE
+df["Year"]  = df["Date"].dt.year
+df["Month"] = df["Date"].dt.month
+df["Day"]   = df["Date"].dt.day
+df = df.drop(columns=["Date"])
 
-    X = df_class.drop(columns=["Total_Class"])
-    y = df_class["Total_Class"]
+st.success("Data cleaning & feature engineering selesai")
 
-    cat_features = ["City", "Gender", "Airline", "Payment_Method"]
+# =====================================================
+# ================= KLASIFIKASI =======================
+# =====================================================
+st.header(" Klasifikasi Revenue")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42, stratify=y
-    )
+df["Revenue_Class"] = pd.qcut(
+    df["Revenue"],
+    q=3,
+    labels=[0, 1, 2]
+)
 
-    model_cls = CatBoostClassifier(
-        iterations=500,
-        learning_rate=0.05,
-        depth=8,
-        loss_function="MultiClass",
-        verbose=0
-    )
+X_cls = df.drop(columns=["Revenue", "Revenue_Class"])
+y_cls = df["Revenue_Class"]
 
-    model_cls.fit(X_train, y_train, cat_features=cat_features)
-    y_pred = model_cls.predict(X_test)
+if "Transaction_ID" in X_cls.columns:
+    X_cls = X_cls.drop(columns=["Transaction_ID"])
 
-    st.write("Accuracy:", accuracy_score(y_test, y_pred))
-    st.text("Classification Report")
-    st.text(classification_report(y_test, y_pred))
+cat_features_cls = X_cls.select_dtypes(include="object").columns.tolist()
 
-    cm = confusion_matrix(y_test, y_pred)
-    fig_cm, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-    ax.set_title("Confusion Matrix")
-    st.pyplot(fig_cm)
+Xc_train, Xc_test, yc_train, yc_test = train_test_split(
+    X_cls, y_cls, test_size=0.25, random_state=42, stratify=y_cls
+)
 
-    # Feature Importance
-    fi = pd.DataFrame({
-        "Feature": X.columns,
-        "Importance": model_cls.get_feature_importance()
-    }).sort_values(by="Importance", ascending=False)
+cls_model = CatBoostClassifier(
+    iterations=300,
+    learning_rate=0.05,
+    depth=6,
+    loss_function="MultiClass",
+    verbose=0
+)
 
-    fi.to_csv("feature_importance_classification.csv", index=False)
+cls_model.fit(Xc_train, yc_train, cat_features=cat_features_cls)
+pred_cls = cls_model.predict(Xc_test)
 
-    fig_fi, ax = plt.subplots()
-    sns.barplot(x="Importance", y="Feature", data=fi, ax=ax)
-    ax.set_title("Feature Importance")
-    st.pyplot(fig_fi)
+acc = accuracy_score(yc_test, pred_cls)
+st.write("### Accuracy Klasifikasi:", round(acc, 4))
 
-    # =====================================================
-    # REGRESI + ENSEMBLE
-    # =====================================================
-    st.subheader("Regresi & Ensemble Method")
+st.text("Classification Report")
+st.text(classification_report(yc_test, pred_cls))
 
-    X_reg = df.drop(columns=["Total_Class", "Total"])
-    y_reg = df["Total"]
+hasil_klasifikasi = pd.DataFrame({
+    "Actual_Class": yc_test.values,
+    "Predicted_Class": pred_cls.flatten()
+})
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_reg, y_reg, test_size=0.25, random_state=42
-    )
+st.download_button(
+    "⬇️ Download Hasil Klasifikasi (CSV)",
+    hasil_klasifikasi.to_csv(index=False),
+    file_name="hasil_klasifikasi.csv",
+    mime="text/csv"
+)
 
-    # CatBoost Regressor
-    cat_reg = CatBoostRegressor(
-        iterations=500,
-        learning_rate=0.05,
-        depth=8,
-        loss_function="RMSE",
-        verbose=0
-    )
+# =====================================================
+# ================= REGRESI ===========================
+# =====================================================
+st.header("Regresi Revenue + Ensemble")
 
-    cat_reg.fit(X_train, y_train, cat_features=cat_features)
-    pred_cat = cat_reg.predict(X_test)
+X_reg = df.drop(columns=["Revenue", "Revenue_Class"])
+y_reg = df["Revenue"]
 
-    # Encode untuk Linear Models
-    X_train_enc = X_train.copy()
-    X_test_enc = X_test.copy()
+if "Transaction_ID" in X_reg.columns:
+    X_reg = X_reg.drop(columns=["Transaction_ID"])
 
-    for col in cat_features:
-        le = LabelEncoder()
-        X_train_enc[col] = le.fit_transform(X_train_enc[col])
-        X_test_enc[col] = le.transform(X_test_enc[col])
+# ---- CatBoost Regressor ----
+cat_features_reg = X_reg.select_dtypes(include="object").columns.tolist()
 
-    lr = LinearRegression()
-    ridge = Ridge(alpha=1.0)
-    lasso = Lasso(alpha=0.001)
+Xr_train, Xr_test, yr_train, yr_test = train_test_split(
+    X_reg, y_reg, test_size=0.25, random_state=42
+)
 
-    lr.fit(X_train_enc, y_train)
-    ridge.fit(X_train_enc, y_train)
-    lasso.fit(X_train_enc, y_train)
+cat_reg = CatBoostRegressor(
+    iterations=400,
+    learning_rate=0.05,
+    depth=8,
+    loss_function="RMSE",
+    verbose=0
+)
 
-    pred_lr = lr.predict(X_test_enc)
-    pred_ridge = ridge.predict(X_test_enc)
-    pred_lasso = lasso.predict(X_test_enc)
+cat_reg.fit(Xr_train, yr_train, cat_features=cat_features_reg)
+pred_cat = cat_reg.predict(Xr_test)
 
-    # Ensemble
-    ensemble_pred = (
-        pred_cat + pred_lr + pred_ridge + pred_lasso
-    ) / 4
+# ---- Linear, Ridge, Lasso ----
+X_enc = X_reg.copy()
 
-    # Evaluasi
-    def eval_reg(y_true, y_pred):
-        return {
-            "RMSE": np.sqrt(mean_squared_error(y_true, y_pred)),
-            "MAE": mean_absolute_error(y_true, y_pred),
-            "R2": r2_score(y_true, y_pred)
-        }
+for col in X_enc.select_dtypes(include="object").columns:
+    le = LabelEncoder()
+    X_enc[col] = le.fit_transform(X_enc[col].astype(str))
 
-    st.write("CatBoost:", eval_reg(y_test, pred_cat))
-    st.write("Ensemble:", eval_reg(y_test, ensemble_pred))
+imputer = SimpleImputer(strategy="median")
+X_enc = pd.DataFrame(
+    imputer.fit_transform(X_enc),
+    columns=X_enc.columns
+)
 
-    # Simpan hasil
-    reg_result = pd.DataFrame({
-        "Actual_Total": y_test.values,
-        "Pred_CatBoost": pred_cat,
-        "Pred_Linear": pred_lr,
-        "Pred_Ridge": pred_ridge,
-        "Pred_Lasso": pred_lasso,
-        "Pred_Ensemble": ensemble_pred
-    })
+mask = ~y_reg.isna()
+X_enc = X_enc.loc[mask]
+y_clean = y_reg.loc[mask]
 
-    reg_result.to_csv("hasil_regresi_ensemble.csv", index=False)
+Xe_train, Xe_test, ye_train, ye_test = train_test_split(
+    X_enc, y_clean, test_size=0.25, random_state=42
+)
 
-    # Visualisasi
-    fig_reg, ax = plt.subplots()
-    ax.scatter(y_test, ensemble_pred, alpha=0.6)
-    ax.set_xlabel("Actual Total")
-    ax.set_ylabel("Predicted Total")
-    ax.set_title("Actual vs Predicted - Ensemble Regression")
-    st.pyplot(fig_reg)
+lr = LinearRegression()
+ridge = Ridge(alpha=1.0)
+lasso = Lasso(alpha=0.001)
 
-    st.success("Proses selesai. File CSV tersimpan.")
+lr.fit(Xe_train, ye_train)
+ridge.fit(Xe_train, ye_train)
+lasso.fit(Xe_train, ye_train)
+
+pred_lr    = lr.predict(Xe_test)
+pred_ridge = ridge.predict(Xe_test)
+pred_lasso = lasso.predict(Xe_test)
+
+# ---- Ensemble Averaging ----
+ensemble_pred = (
+    pred_cat +
+    pred_lr +
+    pred_ridge +
+    pred_lasso
+) / 4
+
+# =====================================================
+# EVALUASI REGRESI
+# =====================================================
+def eval_reg(y_true, y_pred):
+    return {
+        "RMSE": np.sqrt(mean_squared_error(y_true, y_pred)),
+        "MAE": mean_absolute_error(y_true, y_pred),
+        "R2": r2_score(y_true, y_pred)
+    }
+
+st.subheader("Evaluasi Regresi")
+
+st.write("CatBoost Regressor:", eval_reg(yr_test, pred_cat))
+st.write("Ensemble Regression:", eval_reg(ye_test, ensemble_pred))
+
+hasil_regresi = pd.DataFrame({
+    "Actual_Revenue": ye_test.values,
+    "Pred_CatBoost": pred_cat,
+    "Pred_Linear": pred_lr,
+    "Pred_Ridge": pred_ridge,
+    "Pred_Lasso": pred_lasso,
+    "Pred_Ensemble": ensemble_pred
+})
+
+st.download_button(
+    "Download Hasil Regresi (CSV)",
+    hasil_regresi.to_csv(index=False),
+    file_name="hasil_regresi_ensemble.csv",
+    mime="text/csv"
+)
+
+st.success("Analisis selesai! Semua model berhasil dijalankan.")
