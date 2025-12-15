@@ -1,6 +1,6 @@
 # =====================================================
 # STREAMLIT APP
-# KLASIFIKASI + REGRESI + ENSEMBLE + INPUT USER
+# INPUT USER + KLASIFIKASI + REGRESI + ENSEMBLE
 # =====================================================
 
 import streamlit as st
@@ -11,13 +11,13 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
-from sklearn.metrics import accuracy_score
 from sklearn.impute import SimpleImputer
+from sklearn.metrics import accuracy_score
 
 # =====================================================
 # STREAMLIT CONFIG
 # =====================================================
-st.set_page_config(page_title="Prediksi Penjualan", layout="wide")
+st.set_page_config(page_title="Prediksi Revenue Penjualan", layout="wide")
 st.title("📊 Aplikasi Prediksi Revenue Penjualan")
 
 # =====================================================
@@ -25,45 +25,69 @@ st.title("📊 Aplikasi Prediksi Revenue Penjualan")
 # =====================================================
 uploaded_file = st.file_uploader("Upload Dataset CSV", type=["csv"])
 if uploaded_file is None:
-    st.info("Silakan upload dataset CSV")
+    st.info("⬆️ Silakan upload dataset CSV terlebih dahulu")
     st.stop()
 
 # =====================================================
-# LOAD & CLEAN DATA
+# LOAD & CLEAN DATA (AMAN)
 # =====================================================
 df = pd.read_csv(uploaded_file, sep=None, engine="python")
 df.columns = df.columns.str.strip()
 df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
+# Pastikan kolom penting ada
+required_cols = [
+    "Product_Name", "Category", "Store_Location",
+    "Payment_Method", "Units_Sold", "Unit_Price",
+    "Revenue", "Date"
+]
+for col in required_cols:
+    if col not in df.columns:
+        st.error(f"❌ Kolom '{col}' tidak ditemukan di dataset")
+        st.stop()
+
+# Cleaning
 df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 df = df.drop_duplicates()
 
-num_cols = ["Units_Sold", "Unit_Price", "Revenue"]
-for col in num_cols:
+for col in ["Units_Sold", "Unit_Price", "Revenue"]:
     df[col] = pd.to_numeric(
         df[col].astype(str).str.replace(",", "."),
         errors="coerce"
     )
 
-df["Year"]  = df["Date"].dt.year
+# Feature engineering date
+df["Year"] = df["Date"].dt.year
 df["Month"] = df["Date"].dt.month
-df["Day"]   = df["Date"].dt.day
+df["Day"] = df["Date"].dt.day
 df = df.drop(columns=["Date"])
 
 # =====================================================
-# KLASIFIKASI SETUP
+# ================= KLASIFIKASI =======================
 # =====================================================
-df["Revenue_Class"] = pd.qcut(df["Revenue"], q=3, labels=[0,1,2])
+st.header("🔖 Model Klasifikasi Revenue")
 
-label_map = {0:"Rendah", 1:"Sedang", 2:"Tinggi"}
+# Buat kelas (dan FIX NaN)
+df["Revenue_Class"] = pd.qcut(
+    df["Revenue"], q=3, labels=[0, 1, 2]
+)
+df = df.dropna(subset=["Revenue", "Revenue_Class"])
 
-X_cls = df.drop(columns=["Revenue", "Revenue_Class", "Transaction_ID"], errors="ignore")
+label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
+
+X_cls = df.drop(
+    columns=["Revenue", "Revenue_Class", "Transaction_ID"],
+    errors="ignore"
+)
 y_cls = df["Revenue_Class"]
 
 cat_features = X_cls.select_dtypes(include="object").columns.tolist()
 
 Xc_train, _, yc_train, _ = train_test_split(
-    X_cls, y_cls, test_size=0.25, random_state=42, stratify=y_cls
+    X_cls, y_cls,
+    test_size=0.25,
+    random_state=42,
+    stratify=y_cls
 )
 
 cls_model = CatBoostClassifier(
@@ -76,11 +100,17 @@ cls_model = CatBoostClassifier(
 cls_model.fit(Xc_train, yc_train, cat_features=cat_features)
 
 # =====================================================
-# REGRESI + ENSEMBLE SETUP
+# ================= REGRESI ===========================
 # =====================================================
-X_reg = df.drop(columns=["Revenue", "Revenue_Class", "Transaction_ID"], errors="ignore")
+st.header("💰 Model Regresi + Ensemble")
+
+X_reg = df.drop(
+    columns=["Revenue", "Revenue_Class", "Transaction_ID"],
+    errors="ignore"
+)
 y_reg = df["Revenue"]
 
+# CatBoost Regressor
 cat_reg = CatBoostRegressor(
     iterations=400,
     learning_rate=0.05,
@@ -90,7 +120,7 @@ cat_reg = CatBoostRegressor(
 )
 cat_reg.fit(X_reg, y_reg, cat_features=cat_features)
 
-# Encode for linear models
+# Linear / Ridge / Lasso
 X_enc = X_reg.copy()
 encoders = {}
 
@@ -100,7 +130,10 @@ for col in X_enc.select_dtypes(include="object").columns:
     encoders[col] = le
 
 imputer = SimpleImputer(strategy="median")
-X_enc = pd.DataFrame(imputer.fit_transform(X_enc), columns=X_enc.columns)
+X_enc = pd.DataFrame(
+    imputer.fit_transform(X_enc),
+    columns=X_enc.columns
+)
 
 lr = LinearRegression().fit(X_enc, y_reg)
 ridge = Ridge(alpha=1.0).fit(X_enc, y_reg)
@@ -111,20 +144,32 @@ lasso = Lasso(alpha=0.001).fit(X_enc, y_reg)
 # =====================================================
 st.sidebar.header("🧾 Input Data Penjualan")
 
-product = st.sidebar.selectbox("Product Name", df["Product_Name"].unique())
-category = st.sidebar.selectbox("Category", df["Category"].unique())
-store = st.sidebar.selectbox("Store Location", df["Store_Location"].unique())
-payment = st.sidebar.selectbox("Payment Method", df["Payment_Method"].unique())
+product = st.sidebar.selectbox(
+    "Product Name", sorted(df["Product_Name"].unique())
+)
+category = st.sidebar.selectbox(
+    "Category", sorted(df["Category"].unique())
+)
+store = st.sidebar.selectbox(
+    "Store Location", sorted(df["Store_Location"].unique())
+)
+payment = st.sidebar.selectbox(
+    "Payment Method", sorted(df["Payment_Method"].unique())
+)
 
-units = st.sidebar.number_input("Units Sold", min_value=1, value=1)
-price = st.sidebar.number_input("Unit Price", min_value=1.0, value=1000.0)
+units = st.sidebar.number_input(
+    "Units Sold", min_value=1, value=1
+)
+price = st.sidebar.number_input(
+    "Unit Price", min_value=1.0, value=1000.0
+)
 
-year  = st.sidebar.number_input("Year", value=2024)
+year = st.sidebar.number_input("Year", value=2024)
 month = st.sidebar.slider("Month", 1, 12, 1)
-day   = st.sidebar.slider("Day", 1, 31, 1)
+day = st.sidebar.slider("Day", 1, 31, 1)
 
 # =====================================================
-# PREDIKSI
+# ================= PREDIKSI ==========================
 # =====================================================
 if st.sidebar.button("🔮 Prediksi"):
     input_df = pd.DataFrame([{
@@ -141,7 +186,7 @@ if st.sidebar.button("🔮 Prediksi"):
 
     # --- Klasifikasi ---
     pred_class = cls_model.predict(input_df)[0][0]
-    label = label_map[pred_class]
+    pred_label = label_map[pred_class]
 
     # --- Regresi ---
     pred_cat = cat_reg.predict(input_df)[0]
@@ -150,21 +195,26 @@ if st.sidebar.button("🔮 Prediksi"):
     for col in encoders:
         input_enc[col] = encoders[col].transform(input_enc[col])
 
-    input_enc = pd.DataFrame(imputer.transform(input_enc), columns=input_enc.columns)
+    input_enc = pd.DataFrame(
+        imputer.transform(input_enc),
+        columns=input_enc.columns
+    )
 
     pred_lr = lr.predict(input_enc)[0]
     pred_ridge = ridge.predict(input_enc)[0]
     pred_lasso = lasso.predict(input_enc)[0]
 
-    ensemble_pred = (pred_cat + pred_lr + pred_ridge + pred_lasso) / 4
+    ensemble_pred = (
+        pred_cat + pred_lr + pred_ridge + pred_lasso
+    ) / 4
 
-    # =====================================================
+    # =================================================
     # OUTPUT
-    # =====================================================
-    st.success("🎉 Hasil Prediksi")
+    # =================================================
+    st.success("✅ Prediksi Berhasil")
 
-    st.write("### 🔖 Prediksi Kelas Revenue:")
-    st.markdown(f"## **{label}**")
+    st.markdown("### 🔖 Prediksi Kelas Revenue")
+    st.markdown(f"## **{pred_label}**")
 
-    st.write("### 💰 Prediksi Revenue (Ensemble):")
+    st.markdown("### 💰 Prediksi Revenue (Ensemble)")
     st.markdown(f"## **Rp {ensemble_pred:,.2f}**")
