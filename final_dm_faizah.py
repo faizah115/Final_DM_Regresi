@@ -144,6 +144,7 @@ if uploaded:
 # ======================= BAGIAN B =====================
 # REGRESI KONSUMSI BBM (RANDOM FOREST)
 # =====================================================
+df = pd.read_csv(uploaded)
 st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
 
 from sklearn.ensemble import RandomForestRegressor
@@ -151,6 +152,7 @@ from sklearn.ensemble import RandomForestRegressor
 # -----------------------
 # Feature & Target
 # -----------------------
+df = pd.get_dummies(df, drop_first=True)
 X_B = df.drop(["KonsumsiBBM"], axis=1)
 y_B = df["KonsumsiBBM"]
 
@@ -198,6 +200,8 @@ def kategori_bbm(nilai):
 # INPUT USER – BAGIAN B
 # PREDIKSI KONSUMSI BBM MOTOR BARU
 # =====================================================
+
+
 st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
 
 input_B = {}
