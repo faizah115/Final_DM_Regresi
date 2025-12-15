@@ -17,7 +17,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 from sklearn.linear_model import Ridge, Lasso
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
 
 # =========================================================
 # KONFIGURASI HALAMAN
@@ -192,7 +193,7 @@ y_pred_B = rf_reg.predict(X_test_B)
 # -----------------------
 st.subheader("📊 Evaluasi Regresi (Random Forest Ensemble)")
 st.write("MAE :", mean_absolute_error(y_test_B, y_pred_B))
-st.write("RMSE:", mean_squared_error(y_test_B, y_pred_B, squared=False))
+st.write("RMSE:", mean_squared_error(y_test_B, y_pred_B) ** 0.5)
 st.write("R²  :", r2_score(y_test_B, y_pred_B))
 
 # -----------------------
