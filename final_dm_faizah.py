@@ -140,7 +140,7 @@ if uploaded:
         st.success(f"💰 Kategori Harga: **{label_map[pred]}**")
 
     
-    # =====================================================
+  # =====================================================
 # ======================= BAGIAN B =====================
 # REGRESI KONSUMSI BBM (RANDOM FOREST)
 # =====================================================
@@ -181,6 +181,20 @@ st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
 st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
 
 # =====================================================
+# BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
+# =====================================================
+bbm_q1 = df["konsumsiBBM"].quantile(0.33)
+bbm_q2 = df["konsumsiBBM"].quantile(0.66)
+
+def kategori_bbm(nilai):
+    if nilai <= bbm_q1:
+        return "Boros"
+    elif nilai <= bbm_q2:
+        return "Sedang"
+    else:
+        return "Hemat"
+
+# =====================================================
 # INPUT USER – BAGIAN B
 # PREDIKSI KONSUMSI BBM MOTOR BARU
 # =====================================================
@@ -197,7 +211,12 @@ for i, col in enumerate(X_B.columns):
 if st.button("⛽ Prediksi Konsumsi BBM"):
     input_df_B = pd.DataFrame([input_B])
     pred_bbm = rf_reg.predict(input_df_B)[0]
-    st.success(f"🔋 Prediksi Konsumsi BBM: **{pred_bbm:.2f} km/l**")
+    kategori = kategori_bbm(pred_bbm)
+
+    st.success(
+        f"🔋 Kategori Konsumsi BBM: **{kategori}**\n"
+        f"(Estimasi: {pred_bbm:.2f} km/l)"
+    )
 
 # =====================================================
 # SEGMENTASI KONSUMSI BBM
