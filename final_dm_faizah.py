@@ -151,8 +151,8 @@ from sklearn.ensemble import RandomForestRegressor
 # -----------------------
 # Feature & Target
 # -----------------------
-X_B = df.drop(["konsumsiBBM"], axis=1)
-y_B = df["konsumsiBBM"]
+X_B = df.drop(["KonsumsiBBM"], axis=1)
+y_B = df["KonsumsiBBM"]
 
 # -----------------------
 # Split Data
@@ -183,8 +183,8 @@ st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
 # =====================================================
 # BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
 # =====================================================
-bbm_q1 = df["konsumsiBBM"].quantile(0.33)
-bbm_q2 = df["konsumsiBBM"].quantile(0.66)
+bbm_q1 = df["KonsumsiBBM"].quantile(0.33)
+bbm_q2 = df["KonsumsiBBM"].quantile(0.66)
 
 def kategori_bbm(nilai):
     if nilai <= bbm_q1:
