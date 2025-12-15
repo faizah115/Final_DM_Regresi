@@ -195,12 +195,13 @@ for name, model in models.items():
 # =====================================================
 st.subheader("🔍 Prediksi Konsumsi BBM Motor Baru")
 
-# Ambil fitur yang sama persis dengan X_B
 input_bbm = {}
-for col in X_B.columns:
+
+for i, col in enumerate(X_B.columns):
     input_bbm[col] = st.number_input(
-        f"Input {col}",
-        value=float(df[col].median())
+        label=f"Input {col}",
+        value=float(df[col].median()),
+        key=f"bbm_{i}_{col}"   # <<< KEY UNIK (INI PENTING)
     )
 
 if st.button("🔍 Prediksi Konsumsi BBM"):
@@ -209,13 +210,13 @@ if st.button("🔍 Prediksi Konsumsi BBM"):
     # Scaling
     input_scaled_B = scaler_B.transform(input_df_B)
 
-    # Gunakan satu model utama (misal: SVR)
+    # Gunakan model utama (SVR)
     model_bbm = models["SVR"]
     bbm_pred = model_bbm.predict(input_scaled_B)[0]
 
     st.success(f"⛽ Prediksi Konsumsi BBM: **{bbm_pred:.2f}**")
 
-    # Interpretasi bisnis sederhana
+    # Interpretasi bisnis
     if bbm_pred < df["konsumsiBBM"].quantile(0.33):
         kategori = "Boros"
     elif bbm_pred < df["konsumsiBBM"].quantile(0.66):
