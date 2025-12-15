@@ -33,7 +33,7 @@ st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
 # UPLOAD DATASET
 # =========================================================
 uploaded = st.file_uploader(
-    "📂 Upload dataset motor_second_dataset.csv",
+    "📂 Upload dataset motor_second_dataset.csv ABAIKAN EROR INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA)",
     type=["csv"]
 )
 
