@@ -119,45 +119,74 @@ if uploaded:
         label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
         st.success(f"💰 Prediksi Kategori Harga: **{label_map[pred]}**")
 
-    # =====================================================
-    # ================= BAGIAN B ===========================
-    # REGRESI ENSEMBLE
-    # =====================================================
-    st.header("🅱️ Bagian B – Prediksi Konsumsi BBM (Regresi)")
+ # =====================================================
+# ================= BAGIAN B ===========================
+# REGRESI ENSEMBLE
+# =====================================================
+st.header("🅱️ Bagian B – Prediksi Konsumsi BBM (Regresi)")
 
-    df["segmen_bbm"] = pd.qcut(
-        df["konsumsiBBM"], q=3, labels=["Boros", "Sedang", "Hemat"]
+# -----------------------
+# Segmentasi Konsumsi BBM (Visualisasi)
+# -----------------------
+df["segmen_bbm"] = pd.qcut(
+    df["konsumsiBBM"],
+    q=3,
+    labels=["Boros", "Sedang", "Hemat"]
+)
+
+fig2, ax2 = plt.subplots()
+df["segmen_bbm"].value_counts().plot(kind="bar", ax=ax2)
+ax2.set_title("Segmentasi Motor Berdasarkan Konsumsi BBM")
+ax2.set_xlabel("Segmen BBM")
+ax2.set_ylabel("Jumlah Motor")
+st.pyplot(fig2)
+
+# -----------------------
+# Feature & Target (NUMERIK SAJA)
+# -----------------------
+X_B = df.drop(
+    ["konsumsiBBM", "kategori_harga", "kategori_bbm", "segmen_bbm"],
+    axis=1,
+    errors="ignore"
+)
+y_B = df["konsumsiBBM"]
+
+# -----------------------
+# Split Data
+# -----------------------
+X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
+    X_B, y_B, test_size=0.25, random_state=42
+)
+
+# -----------------------
+# Scaling
+# -----------------------
+scaler_B = StandardScaler()
+X_train_B_scaled = scaler_B.fit_transform(X_train_B)
+X_test_B_scaled = scaler_B.transform(X_test_B)
+
+# -----------------------
+# Model Regresi Ensemble
+# -----------------------
+models = {
+    "SVR": SVR(),
+    "AdaBoost": AdaBoostRegressor(random_state=42),
+    "Ridge": Ridge()
+}
+
+# -----------------------
+# Evaluasi Model
+# -----------------------
+st.subheader("📊 Evaluasi Regresi (R² & MAE)")
+for name, model in models.items():
+    model.fit(X_train_B_scaled, y_train_B)
+    y_pred = model.predict(X_test_B_scaled)
+
+    r2 = r2_score(y_test_B, y_pred)
+    mae = mean_absolute_error(y_test_B, y_pred)
+
+    st.write(
+        f"**{name}** → "
+        f"R²: {r2:.3f} | "
+        f"MAE: {mae:.2f}"
     )
-
-    fig2, ax2 = plt.subplots()
-    df["segmen_bbm"].value_counts().plot(kind="bar", ax=ax2)
-    ax2.set_title("Segmentasi Motor Berdasarkan Konsumsi BBM")
-    st.pyplot(fig2)
-
-    X_B = df.drop("konsumsiBBM", axis=1)
-    y_B = df["konsumsiBBM"]
-
-    X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
-        X_B, y_B, test_size=0.25, random_state=42
-    )
-
-    scaler_B = StandardScaler()
-    X_train_B_scaled = scaler_B.fit_transform(X_train_B)
-    X_test_B_scaled = scaler_B.transform(X_test_B)
-
-    models = {
-        "SVR": SVR(),
-        "AdaBoost": AdaBoostRegressor(random_state=42),
-        "Ridge": Ridge()
-    }
-
-    st.subheader("📊 Evaluasi Regresi (R² & MAE)")
-    for name, model in models.items():
-        model.fit(X_train_B_scaled, y_train_B)
-        y_pred = model.predict(X_test_B_scaled)
-
-        st.write(
-            f"**{name}** → "
-            f"R²: {r2_score(y_test_B, y_pred):.3f} | "
-            f"MAE: {mean_absolute_error(y_test_B, y_pred):.2f}"
-        )
