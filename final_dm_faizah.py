@@ -145,42 +145,56 @@ if st.button("🔍 Prediksi Kategori Harga"):
 
 
     # =====================================================
-    # ======================= BAGIAN B =====================
-    # REGRESI ENSEMBLE (RIDGE & LASSO)
-    # =====================================================
-    st.header("🅱️ Bagian B – Regresi Harga (Ensemble)")
+# ======================= BAGIAN B =====================
+# REGRESI ENSEMBLE (RIDGE & LASSO)
+# =====================================================
+st.header("🅱️ Bagian B – Regresi Harga (Ensemble)")
 
-    X_R = df.drop("harga", axis=1)
-    y_R = df["harga"]
+# -----------------------
+# Feature & Target
+# -----------------------
+X_R = df.drop("harga", axis=1)
+y_R = df["harga"]
 
-    X_train_R, X_test_R, y_train_R, y_test_R = train_test_split(
-        X_R, y_R, test_size=0.2, random_state=42
-    )
+# -----------------------
+# Split Data
+# -----------------------
+X_train_R, X_test_R, y_train_R, y_test_R = train_test_split(
+    X_R, y_R, test_size=0.2, random_state=42
+)
 
-    scaler_R = StandardScaler()
-    X_train_R_scaled = scaler_R.fit_transform(X_train_R)
-    X_test_R_scaled = scaler_R.transform(X_test_R)
+# -----------------------
+# Scaling
+# -----------------------
+scaler_R = StandardScaler()
+X_train_R_scaled = scaler_R.fit_transform(X_train_R)
+X_test_R_scaled = scaler_R.transform(X_test_R)
 
-    models_reg = {
-        "Ridge Regression": Ridge(),
-        "Lasso Regression": Lasso()
-    }
+# -----------------------
+# Model Regresi
+# -----------------------
+models_reg = {
+    "Ridge Regression": Ridge(),
+    "Lasso Regression": Lasso()
+}
 
-    st.subheader("📊 Evaluasi Regresi (R² & MAE)")
-    for name, model in models_reg.items():
-        model.fit(X_train_R_scaled, y_train_R)
-        y_pred_R = model.predict(X_test_R_scaled)
+# -----------------------
+# Evaluasi Model
+# -----------------------
+st.subheader("📊 Evaluasi Regresi (R² & MAE)")
+for name, model in models_reg.items():
+    model.fit(X_train_R_scaled, y_train_R)
+    y_pred_R = model.predict(X_test_R_scaled)
 
-        r2 = r2_score(y_test_R, y_pred_R)
-        mae = mean_absolute_error(y_test_R, y_pred_R)
+    r2 = r2_score(y_test_R, y_pred_R)
+    mae = mean_absolute_error(y_test_R, y_pred_R)
 
-        st.write(f"**{name}**")
-        st.write(f"R² Score : {r2:.3f}")
-        st.write(f"MAE      : {mae:.2f}")
+    st.write(f"**{name}**")
+    st.write(f"R² Score : {r2:.3f}")
+    st.write(f"MAE      : {mae:.2f}")
 
 # =====================================================
 # INPUT USER – BAGIAN B
-# PREDIKSI HARGA MOTOR (REGRESI)
 # =====================================================
 st.subheader("🔍 Prediksi Harga Motor (Input User)")
 
@@ -196,8 +210,10 @@ if st.button("🔍 Prediksi Harga Motor"):
     input_df_B = pd.DataFrame([input_B])
     input_scaled_B = scaler_R.transform(input_df_B)
 
-    # Gunakan model utama (Ridge)
-    model_harga = models_reg["Ridge Regression"]
-    harga_pred = model_harga.predict(input_scaled_B)[0]
+    # Fit ulang Ridge agar aman
+    ridge_model = Ridge()
+    ridge_model.fit(X_train_R_scaled, y_train_R)
+
+    harga_pred = ridge_model.predict(input_scaled_B)[0]
 
     st.success(f"💵 Prediksi Harga Motor: **Rp {harga_pred:,.0f}**")
