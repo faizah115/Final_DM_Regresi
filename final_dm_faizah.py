@@ -164,8 +164,9 @@ st.pyplot(fig_bbm)
 # -----------------------
 # Feature & Target Regresi
 # -----------------------
-X_B = df.drop(["kategori_harga", "kategori_bbm"], axis=1)
-y_B = df["konsumsi_bbm"]
+X_B = df.drop(["harga", "kategori_harga", "kategori_bbm"], axis=1)
+y_B = df["harga"]
+
 
 # -----------------------
 # Split Data
