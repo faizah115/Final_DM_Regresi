@@ -32,18 +32,12 @@ st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
 # =========================================================
 # UPLOAD DATASET
 # =========================================================
-uploaded = st.file_uploader("📂 Upload Dataset Motor (CSV)", type=["csv"])
+uploaded = st.file_uploader(
+    "📂 Upload dataset motor_second_dataset.csv",
+    type=["csv"]
+)
 
-if uploaded is not None:
-    df = pd.read_csv(uploaded)
-
-    st.success("Dataset berhasil dimuat")
-    st.write(df.head())
-
-else:
-    st.warning("Silakan upload file CSV terlebih dahulu")
-    st.stop()   # ⛔ HENTIKAN PROGRAM DI SINI
-
+if uploaded:
 
     # =====================================================
     # LOAD DATA
@@ -143,7 +137,7 @@ else:
         pred = knn.predict(input_scaled)[0]
 
         label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
-        st.success(f"💰 Kategori Harga: **{label_map[pred]}**")
+        st.success(f"💰 Kategori Harga: *{label_map[pred]}*")
 
     
   # =====================================================
@@ -157,9 +151,8 @@ from sklearn.ensemble import RandomForestRegressor
 # -----------------------
 # Feature & Target
 # -----------------------
-df = pd.get_dummies(df, drop_first=True)
-X_B = df.drop(["KonsumsiBBM"], axis=1)
-y_B = df["KonsumsiBBM"]
+X_B = df.drop(["konsumsiBBM"], axis=1)
+y_B = df["konsumsiBBM"]
 
 # -----------------------
 # Split Data
@@ -190,8 +183,8 @@ st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
 # =====================================================
 # BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
 # =====================================================
-bbm_q1 = df["KonsumsiBBM"].quantile(0.33)
-bbm_q2 = df["KonsumsiBBM"].quantile(0.66)
+bbm_q1 = df["konsumsiBBM"].quantile(0.33)
+bbm_q2 = df["konsumsiBBM"].quantile(0.66)
 
 def kategori_bbm(nilai):
     if nilai <= bbm_q1:
@@ -205,8 +198,6 @@ def kategori_bbm(nilai):
 # INPUT USER – BAGIAN B
 # PREDIKSI KONSUMSI BBM MOTOR BARU
 # =====================================================
-
-
 st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
 
 input_B = {}
@@ -223,7 +214,7 @@ if st.button("⛽ Prediksi Konsumsi BBM"):
     kategori = kategori_bbm(pred_bbm)
 
     st.success(
-        f"🔋 Kategori Konsumsi BBM: **{kategori}**\n"
+        f"🔋 Kategori Konsumsi BBM: *{kategori}*\n"
         f"(Estimasi: {pred_bbm:.2f} km/l)"
     )
 
