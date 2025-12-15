@@ -190,3 +190,40 @@ for name, model in models.items():
         f"R²: {r2:.3f} | "
         f"MAE: {mae:.2f}"
     )
+# =====================================================
+# INPUT USER – PREDIKSI KONSUMSI BBM (BAGIAN B)
+# =====================================================
+st.subheader("🔍 Prediksi Konsumsi BBM Motor Baru")
+
+# Ambil fitur yang sama persis dengan X_B
+input_bbm = {}
+for col in X_B.columns:
+    input_bbm[col] = st.number_input(
+        f"Input {col}",
+        value=float(df[col].median())
+    )
+
+if st.button("🔍 Prediksi Konsumsi BBM"):
+    input_df_B = pd.DataFrame([input_bbm])
+
+    # Scaling
+    input_scaled_B = scaler_B.transform(input_df_B)
+
+    # Gunakan satu model utama (misal: SVR)
+    model_bbm = models["SVR"]
+    bbm_pred = model_bbm.predict(input_scaled_B)[0]
+
+    st.success(f"⛽ Prediksi Konsumsi BBM: **{bbm_pred:.2f}**")
+
+    # Interpretasi bisnis sederhana
+    if bbm_pred < df["konsumsiBBM"].quantile(0.33):
+        kategori = "Boros"
+    elif bbm_pred < df["konsumsiBBM"].quantile(0.66):
+        kategori = "Sedang"
+    else:
+        kategori = "Hemat"
+
+    st.info(
+        f"📌 Interpretasi: Motor ini diperkirakan memiliki konsumsi BBM "
+        f"**{kategori}**."
+    )
