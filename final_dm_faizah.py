@@ -148,40 +148,69 @@ if st.button("🔍 Prediksi Kategori Harga"):
 # ======================= BAGIAN B =====================
 # REGRESI ENSEMBLE (RIDGE & LASSO)
 # =====================================================
-st.header("🅱️ Bagian B – Regresi Harga (Ensemble)")
+# =====================================================
+# ======================= BAGIAN B =====================
+# REGRESI ENSEMBLE (RIDGE & LASSO)
+# =====================================================
+st.header("🅱️ Bagian B – Regresi Harga Motor (Ridge & Lasso)")
 
-# -----------------------
-# Feature & Target
-# -----------------------
-X_R = df.drop("harga", axis=1)
+# =====================================================
+# VISUALISASI SEGMENTASI KONSUMSI BBM
+# =====================================================
+st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
+
+fig_bbm, ax_bbm = plt.subplots()
+df["kategori_bbm"].value_counts().sort_index().plot(kind="bar", ax=ax_bbm)
+ax_bbm.set_title("Segmentasi Motor Berdasarkan Konsumsi BBM")
+ax_bbm.set_xlabel("Kategori Konsumsi BBM")
+ax_bbm.set_ylabel("Jumlah Motor")
+ax_bbm.set_xticklabels(["Boros", "Sedang", "Hemat"], rotation=0)
+st.pyplot(fig_bbm)
+
+# =====================================================
+# FEATURE & TARGET REGRESI
+# =====================================================
+fitur_regresi = [
+    "tahun",
+    "odometer",
+    "pajak",
+    "konsumsiBBM",
+    "mesin"
+]
+
+X_R = df[fitur_regresi]
 y_R = df["harga"]
 
-# -----------------------
-# Split Data
-# -----------------------
+# =====================================================
+# SPLIT DATA
+# =====================================================
 X_train_R, X_test_R, y_train_R, y_test_R = train_test_split(
-    X_R, y_R, test_size=0.2, random_state=42
+    X_R,
+    y_R,
+    test_size=0.2,
+    random_state=42
 )
 
-# -----------------------
-# Scaling
-# -----------------------
+# =====================================================
+# SCALING DATA
+# =====================================================
 scaler_R = StandardScaler()
 X_train_R_scaled = scaler_R.fit_transform(X_train_R)
-X_test_R_scaled = scaler_R.transform(X_test_R)
+X_test_R_scaled  = scaler_R.transform(X_test_R)
 
-# -----------------------
-# Model Regresi
-# -----------------------
+# =====================================================
+# MODEL REGRESI
+# =====================================================
 models_reg = {
-    "Ridge Regression": Ridge(),
-    "Lasso Regression": Lasso()
+    "Ridge Regression": Ridge(alpha=1.0),
+    "Lasso Regression": Lasso(alpha=0.01)
 }
 
-# -----------------------
-# Evaluasi Model
-# -----------------------
-st.subheader("📊 Evaluasi Regresi (R² & MAE)")
+# =====================================================
+# EVALUASI MODEL
+# =====================================================
+st.subheader("📊 Evaluasi Model Regresi")
+
 for name, model in models_reg.items():
     model.fit(X_train_R_scaled, y_train_R)
     y_pred_R = model.predict(X_test_R_scaled)
@@ -191,29 +220,39 @@ for name, model in models_reg.items():
 
     st.write(f"**{name}**")
     st.write(f"R² Score : {r2:.3f}")
-    st.write(f"MAE      : {mae:.2f}")
+    st.write(f"MAE      : Rp {mae:,.0f}")
+    st.write("---")
 
 # =====================================================
-# INPUT USER – BAGIAN B
+# INPUT USER – PREDIKSI HARGA MOTOR
 # =====================================================
-st.subheader("🔍 Prediksi Harga Motor (Input User)")
+st.subheader("🔍 Prediksi Harga Motor Berdasarkan Konsumsi BBM")
 
 input_B = {}
+
 for i, col in enumerate(X_R.columns):
-    input_B[col] = st.number_input(
-        label=f"Input {col}",
-        value=float(df[col].median()),
-        key=f"B_{i}_{col}"
-    )
+    if col == "konsumsiBBM":
+        input_B[col] = st.number_input(
+            label="Input Konsumsi BBM (km/liter)",
+            min_value=1.0,
+            value=float(df[col].median()),
+            key=f"B_{i}_{col}"
+        )
+    else:
+        input_B[col] = st.number_input(
+            label=f"Input {col}",
+            value=float(df[col].median()),
+            key=f"B_{i}_{col}"
+        )
 
 if st.button("🔍 Prediksi Harga Motor"):
     input_df_B = pd.DataFrame([input_B])
     input_scaled_B = scaler_R.transform(input_df_B)
 
-    # Fit ulang Ridge agar aman
-    ridge_model = Ridge()
-    ridge_model.fit(X_train_R_scaled, y_train_R)
+    # Gunakan Ridge sebagai model final
+    ridge_final = Ridge(alpha=1.0)
+    ridge_final.fit(X_train_R_scaled, y_train_R)
 
-    harga_pred = ridge_model.predict(input_scaled_B)[0]
+    harga_pred = ridge_final.predict(input_scaled_B)[0]
 
     st.success(f"💵 Prediksi Harga Motor: **Rp {harga_pred:,.0f}**")
