@@ -139,55 +139,62 @@ if uploaded:
         label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
         st.success(f"💰 Kategori Harga: **{label_map[pred]}**")
 
+    
     # =====================================================
-    # ======================= BAGIAN B =====================
-    # REGRESI HARGA (RIDGE & LASSO)
-    # =====================================================
-    st.header("🅱 Bagian B – Regresi Harga")
+# ======================= BAGIAN B =====================
+# REGRESI KONSUMSI BBM (RANDOM FOREST)
+# =====================================================
+st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
 
-    X_R = df.drop("harga", axis=1)
-    y_R = df["harga"]
+from sklearn.ensemble import RandomForestRegressor
 
-    X_train_R, X_test_R, y_train_R, y_test_R = train_test_split(
-        X_R, y_R, test_size=0.2, random_state=42
+# -----------------------
+# Feature & Target
+# -----------------------
+X_B = df.drop(["konsumsiBBM"], axis=1)
+y_B = df["konsumsiBBM"]
+
+# -----------------------
+# Split Data
+# -----------------------
+X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
+    X_B, y_B, test_size=0.2, random_state=42
+)
+
+# -----------------------
+# Model Random Forest
+# -----------------------
+rf_reg = RandomForestRegressor(
+    n_estimators=200,
+    random_state=42
+)
+
+rf_reg.fit(X_train_B, y_train_B)
+
+# -----------------------
+# Evaluasi Model
+# -----------------------
+y_pred_B = rf_reg.predict(X_test_B)
+
+st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
+st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
+st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
+
+# =====================================================
+# INPUT USER – BAGIAN B
+# PREDIKSI KONSUMSI BBM MOTOR BARU
+# =====================================================
+st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
+
+input_B = {}
+for i, col in enumerate(X_B.columns):
+    input_B[col] = st.number_input(
+        label=f"Input {col}",
+        value=float(df[col].median()),
+        key=f"B_{i}_{col}"
     )
 
-    scaler_R = StandardScaler()
-    X_train_R = scaler_R.fit_transform(X_train_R)
-    X_test_R = scaler_R.transform(X_test_R)
-
-    ridge = Ridge()
-    lasso = Lasso()
-
-    models = {
-        "Ridge Regression": ridge,
-        "Lasso Regression": lasso
-    }
-
-    st.subheader("📊 Evaluasi Model Regresi")
-    for name, model in models.items():
-        model.fit(X_train_R, y_train_R)
-        y_pred = model.predict(X_test_R)
-
-        st.write(name)
-        st.write("R² :", round(r2_score(y_test_R, y_pred), 3))
-        st.write("MAE:", round(mean_absolute_error(y_test_R, y_pred), 2))
-
-    # =====================================================
-    # INPUT USER – BAGIAN B
-    # =====================================================
-    st.subheader("💸 Prediksi Harga Motor (Input User)")
-
-    input_B = {}
-    for col in X_R.columns:
-        input_B[col] = st.number_input(
-            f"{col}",
-            float(df[col].median())
-        )
-
-    if st.button("Prediksi Harga Motor"):
-        input_df = pd.DataFrame([input_B])
-        input_scaled = scaler_R.transform(input_df)
-        pred_price = ridge.predict(input_scaled)[0]
-
-        st.success(f"💰 Estimasi Harga Motor: **Rp {pred_price:,.0f}**")
+if st.button("⛽ Prediksi Konsumsi BBM"):
+    input_df_B = pd.DataFrame([input_B])
+    pred_bbm = rf_reg.predict(input_df_B)[0]
+    st.success(f"🔋 Prediksi Konsumsi BBM: **{pred_bbm:.2f} km/l**")
