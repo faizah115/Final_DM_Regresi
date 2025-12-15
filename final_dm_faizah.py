@@ -28,7 +28,7 @@ st.set_page_config(
 )
 
 st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi) ")
-st.title("BAIKAN EROR.. INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA")
+st.title("ABAIKAN EROR.. INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA")
 
 # =========================================================
 # UPLOAD DATASET
