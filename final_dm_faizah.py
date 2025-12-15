@@ -144,15 +144,11 @@ if st.button("🔍 Prediksi Kategori Harga"):
     st.success(f"💰 Prediksi Kategori Harga: **{label_map[pred_A]}**")
 
 
-    # =====================================================
-# ======================= BAGIAN B =====================
-# REGRESI ENSEMBLE (RIDGE & LASSO)
-# =====================================================
 # =====================================================
 # ======================= BAGIAN B =====================
 # REGRESI ENSEMBLE (RIDGE & LASSO)
 # =====================================================
-st.header("🅱️ Bagian B – Regresi Harga Motor (Ridge & Lasso)")
+st.header("🅱️ Bagian B – Analisis Konsumsi BBM (Regresi Ridge & Lasso)")
 
 # =====================================================
 # VISUALISASI SEGMENTASI KONSUMSI BBM
@@ -168,18 +164,18 @@ ax_bbm.set_xticklabels(["Boros", "Sedang", "Hemat"], rotation=0)
 st.pyplot(fig_bbm)
 
 # =====================================================
-# FEATURE & TARGET REGRESI
+# FEATURE & TARGET (REGRESI)
 # =====================================================
 fitur_regresi = [
     "tahun",
     "odometer",
     "pajak",
-    "konsumsiBBM",
-    "mesin"
+    "mesin",
+    "harga"
 ]
 
 X_R = df[fitur_regresi]
-y_R = df["harga"]
+y_R = df["konsumsiBBM"]
 
 # =====================================================
 # SPLIT DATA
@@ -209,7 +205,7 @@ models_reg = {
 # =====================================================
 # EVALUASI MODEL
 # =====================================================
-st.subheader("📊 Evaluasi Model Regresi")
+st.subheader("📊 Evaluasi Model Regresi Konsumsi BBM")
 
 for name, model in models_reg.items():
     model.fit(X_train_R_scaled, y_train_R)
@@ -220,39 +216,30 @@ for name, model in models_reg.items():
 
     st.write(f"**{name}**")
     st.write(f"R² Score : {r2:.3f}")
-    st.write(f"MAE      : Rp {mae:,.0f}")
+    st.write(f"MAE      : {mae:.2f} km/l")
     st.write("---")
 
 # =====================================================
-# INPUT USER – PREDIKSI HARGA MOTOR
+# INPUT USER – ANALISIS KONSUMSI BBM
 # =====================================================
-st.subheader("🔍 Prediksi Harga Motor Berdasarkan Konsumsi BBM")
+st.subheader("🔍 Estimasi Konsumsi BBM Motor")
 
 input_B = {}
 
 for i, col in enumerate(X_R.columns):
-    if col == "konsumsiBBM":
-        input_B[col] = st.number_input(
-            label="Input Konsumsi BBM (km/liter)",
-            min_value=1.0,
-            value=float(df[col].median()),
-            key=f"B_{i}_{col}"
-        )
-    else:
-        input_B[col] = st.number_input(
-            label=f"Input {col}",
-            value=float(df[col].median()),
-            key=f"B_{i}_{col}"
-        )
+    input_B[col] = st.number_input(
+        label=f"Input {col}",
+        value=float(df[col].median()),
+        key=f"B_{i}_{col}"
+    )
 
-if st.button("🔍 Prediksi Harga Motor"):
+if st.button("🔍 Estimasi Konsumsi BBM"):
     input_df_B = pd.DataFrame([input_B])
     input_scaled_B = scaler_R.transform(input_df_B)
 
-    # Gunakan Ridge sebagai model final
     ridge_final = Ridge(alpha=1.0)
     ridge_final.fit(X_train_R_scaled, y_train_R)
 
-    harga_pred = ridge_final.predict(input_scaled_B)[0]
+    bbm_pred = ridge_final.predict(input_scaled_B)[0]
 
-    st.success(f"💵 Prediksi Harga Motor: **Rp {harga_pred:,.0f}**")
+    st.success(f"⛽ Estimasi Konsumsi BBM: **{bbm_pred:.2f} km/l**")
