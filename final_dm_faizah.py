@@ -187,7 +187,7 @@ bagging_reg.fit(X_train_B, y_train_B)
 # -----------------------
 y_pred_B = bagging_reg.predict(X_test_B)
 
-st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
+st.subheader("📊 Evaluasi Regresi Konsumsi BBM (Bagging Regressor)")
 st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
 st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
 
