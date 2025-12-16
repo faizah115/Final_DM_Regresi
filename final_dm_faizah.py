@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
-st.caption("Upload dataset CSV – Abaikan warning kecil dari Streamlit")
+st.title("ABAIKAN EROR.. INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA")
 
 # =========================================================
 # UPLOAD DATASET
