@@ -1,8 +1,8 @@
 # =========================================================
 # STREAMLIT APP
 # ANALISIS DATA MOTOR BEKAS
-# BAGIAN A: KNN
-# BAGIAN B: REGRESI ENSEMBLE (RIDGE & LASSO)
+# BAGIAN A: SVM
+# BAGIAN B: BAGGING REGRESSOR
 # =========================================================
 
 import streamlit as st
@@ -12,11 +12,20 @@ import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.metrics import mean_absolute_error, r2_score
+# === MODEL ===
+from sklearn.svm import SVC
+from sklearn.ensemble import BaggingRegressor
+from sklearn.tree import DecisionTreeRegressor
+
+# === METRIK ===
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    mean_absolute_error,
+    r2_score
+)
 
 # =========================================================
 # KONFIGURASI HALAMAN
@@ -27,7 +36,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi) ")
+st.title("🏍 Analisis Motor Bekas (Klasifikasi & Regresi)")
 st.title("ABAIKAN EROR.. INI TIDAK EROR (LANGSUNG UP SAJA FILE CSV -NYA")
 
 # =========================================================
@@ -85,9 +94,9 @@ if uploaded:
 
     # =====================================================
     # ======================= BAGIAN A =====================
-    # KNN - KLASIFIKASI KATEGORI HARGA
+    # SVM - KLASIFIKASI KATEGORI HARGA
     # =====================================================
-    st.header("🅰 Bagian A – Klasifikasi Harga (KNN)")
+    st.header("🅰 Bagian A – Klasifikasi Harga (SVM)")
 
     fig, ax = plt.subplots()
     df["kategori_harga"].value_counts().sort_index().plot(kind="bar", ax=ax)
@@ -106,11 +115,11 @@ if uploaded:
     X_train_A = scaler_A.fit_transform(X_train_A)
     X_test_A = scaler_A.transform(X_test_A)
 
-    knn = KNeighborsClassifier(n_neighbors=5)
-    knn.fit(X_train_A, y_train_A)
-    y_pred_A = knn.predict(X_test_A)
+    svm = SVC(kernel="rbf", C=1, gamma="scale")
+    svm.fit(X_train_A, y_train_A)
+    y_pred_A = svm.predict(X_test_A)
 
-    st.subheader("📊 Evaluasi KNN")
+    st.subheader("📊 Evaluasi SVM")
     st.write("Accuracy:", accuracy_score(y_test_A, y_pred_A))
     st.text(classification_report(y_test_A, y_pred_A))
 
@@ -135,113 +144,102 @@ if uploaded:
     if st.button("Prediksi Kategori Harga"):
         input_df = pd.DataFrame([input_A])
         input_scaled = scaler_A.transform(input_df)
-        pred = knn.predict(input_scaled)[0]
+        pred = svm.predict(input_scaled)[0]
 
         label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
         st.success(f"💰 Kategori Harga: {label_map[pred]}")
 
-    
-  # =====================================================
-# ======================= BAGIAN B =====================
-# REGRESI KONSUMSI BBM (RANDOM FOREST)
-# =====================================================
-st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
+    # =====================================================
+    # ======================= BAGIAN B =====================
+    # BAGGING REGRESSOR - KONSUMSI BBM
+    # =====================================================
+    st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
 
-from sklearn.ensemble import RandomForestRegressor
+    X_B = df.drop(["konsumsiBBM"], axis=1)
+    y_B = df["konsumsiBBM"]
 
-# -----------------------
-# Feature & Target
-# -----------------------
-X_B = df.drop(["konsumsiBBM"], axis=1)
-y_B = df["konsumsiBBM"]
-
-# -----------------------
-# Split Data
-# -----------------------
-X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
-    X_B, y_B, test_size=0.2, random_state=42
-)
-
-# -----------------------
-# Model Random Forest
-# -----------------------
-rf_reg = RandomForestRegressor(
-    n_estimators=200,
-    random_state=42
-)
-
-rf_reg.fit(X_train_B, y_train_B)
-
-# -----------------------
-# Evaluasi Model
-# -----------------------
-y_pred_B = rf_reg.predict(X_test_B)
-
-st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
-st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
-st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
-
-# =====================================================
-# BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
-# =====================================================
-bbm_q1 = df["konsumsiBBM"].quantile(0.33)
-bbm_q2 = df["konsumsiBBM"].quantile(0.66)
-
-def kategori_bbm(nilai):
-    if nilai <= bbm_q1:
-        return "Boros"
-    elif nilai <= bbm_q2:
-        return "Sedang"
-    else:
-        return "Hemat"
-
-# =====================================================
-# INPUT USER – BAGIAN B
-# PREDIKSI KONSUMSI BBM MOTOR BARU
-# =====================================================
-st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
-
-input_B = {}
-for i, col in enumerate(X_B.columns):
-    input_B[col] = st.number_input(
-        label=f"Input {col}",
-        value=float(df[col].median()),
-        key=f"B_{i}_{col}"
+    X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
+        X_B, y_B, test_size=0.2, random_state=42
     )
 
-if st.button("⛽ Prediksi Konsumsi BBM"):
-    input_df_B = pd.DataFrame([input_B])
-    pred_bbm = rf_reg.predict(input_df_B)[0]
-    kategori = kategori_bbm(pred_bbm)
+    scaler_B = StandardScaler()
+    X_train_B = scaler_B.fit_transform(X_train_B)
+    X_test_B = scaler_B.transform(X_test_B)
 
-    st.success(
-        f"🔋 Kategori Konsumsi BBM: {kategori}\n"
-        f"(Estimasi: {pred_bbm:.2f} km/l)"
+    bagging = BaggingRegressor(
+        estimator=DecisionTreeRegressor(),
+        n_estimators=200,
+        random_state=42
     )
 
-# =====================================================
-# SEGMENTASI KONSUMSI BBM
-# =====================================================
-segment_labels = ["Boros", "Sedang", "Hemat"]
+    bagging.fit(X_train_B, y_train_B)
+    y_pred_B = bagging.predict(X_test_B)
 
-df_segment = pd.DataFrame({
-    "Aktual_BBM": y_test_B.values,
-    "Prediksi_BBM": y_pred_B
-})
+    st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
+    st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
+    st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
 
-df_segment["Segment_BBM"] = pd.qcut(
-    df_segment["Prediksi_BBM"],
-    q=3,
-    labels=segment_labels
-)
+    # =====================================================
+    # BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
+    # =====================================================
+    bbm_q1 = df["konsumsiBBM"].quantile(0.33)
+    bbm_q2 = df["konsumsiBBM"].quantile(0.66)
 
-st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
+    def kategori_bbm(nilai):
+        if nilai <= bbm_q1:
+            return "Boros"
+        elif nilai <= bbm_q2:
+            return "Sedang"
+        else:
+            return "Hemat"
 
-fig1, ax1 = plt.subplots()
-df_segment["Segment_BBM"].value_counts().reindex(segment_labels).plot(
-    kind="bar", ax=ax1
-)
-ax1.set_xlabel("Segment Konsumsi BBM")
-ax1.set_ylabel("Jumlah Motor")
-ax1.set_title("Distribusi Segmentasi Konsumsi BBM Motor")
-st.pyplot(fig1)
+    # =====================================================
+    # INPUT USER – BAGIAN B
+    # =====================================================
+    st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
+
+    input_B = {}
+    for i, col in enumerate(X_B.columns):
+        input_B[col] = st.number_input(
+            label=f"Input {col}",
+            value=float(df[col].median()),
+            key=f"B_{i}_{col}"
+        )
+
+    if st.button("⛽ Prediksi Konsumsi BBM"):
+        input_df_B = pd.DataFrame([input_B])
+        input_scaled_B = scaler_B.transform(input_df_B)
+        pred_bbm = bagging.predict(input_scaled_B)[0]
+        kategori = kategori_bbm(pred_bbm)
+
+        st.success(
+            f"🔋 Kategori Konsumsi BBM: {kategori}\n"
+            f"(Estimasi: {pred_bbm:.2f} km/l)"
+        )
+
+    # =====================================================
+    # SEGMENTASI KONSUMSI BBM
+    # =====================================================
+    segment_labels = ["Boros", "Sedang", "Hemat"]
+
+    df_segment = pd.DataFrame({
+        "Aktual_BBM": y_test_B.values,
+        "Prediksi_BBM": y_pred_B
+    })
+
+    df_segment["Segment_BBM"] = pd.qcut(
+        df_segment["Prediksi_BBM"],
+        q=3,
+        labels=segment_labels
+    )
+
+    st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
+
+    fig1, ax1 = plt.subplots()
+    df_segment["Segment_BBM"].value_counts().reindex(segment_labels).plot(
+        kind="bar", ax=ax1
+    )
+    ax1.set_xlabel("Segment Konsumsi BBM")
+    ax1.set_ylabel("Jumlah Motor")
+    ax1.set_title("Distribusi Segmentasi Konsumsi BBM Motor")
+    st.pyplot(fig1)
