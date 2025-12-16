@@ -150,96 +150,108 @@ if uploaded:
         st.success(f"💰 Kategori Harga: {label_map[pred]}")
 
     # =====================================================
-    # ======================= BAGIAN B =====================
-    # BAGGING REGRESSOR - KONSUMSI BBM
-    # =====================================================
-    st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
+# ======================= BAGIAN B =====================
+# REGRESI KONSUMSI BBM (BAGGING REGRESSOR)
+# =====================================================
+st.header("🅱 Bagian B – Prediksi Konsumsi BBM Motor")
 
-    X_B = df.drop(["konsumsiBBM"], axis=1)
-    y_B = df["konsumsiBBM"]
+from sklearn.ensemble import BaggingRegressor
+from sklearn.tree import DecisionTreeRegressor
 
-    X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
-        X_B, y_B, test_size=0.2, random_state=42
+# -----------------------
+# Feature & Target
+# -----------------------
+X_B = df.drop(["konsumsiBBM"], axis=1)
+y_B = df["konsumsiBBM"]
+
+# -----------------------
+# Split Data
+# -----------------------
+X_train_B, X_test_B, y_train_B, y_test_B = train_test_split(
+    X_B, y_B, test_size=0.2, random_state=42
+)
+
+# -----------------------
+# Model Bagging Regressor
+# -----------------------
+bagging_reg = BaggingRegressor(
+    estimator=DecisionTreeRegressor(),
+    n_estimators=200,
+    random_state=42
+)
+
+bagging_reg.fit(X_train_B, y_train_B)
+
+# -----------------------
+# Evaluasi Model
+# -----------------------
+y_pred_B = bagging_reg.predict(X_test_B)
+
+st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
+st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
+st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
+
+# =====================================================
+# BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
+# =====================================================
+bbm_q1 = df["konsumsiBBM"].quantile(0.33)
+bbm_q2 = df["konsumsiBBM"].quantile(0.66)
+
+def kategori_bbm(nilai):
+    if nilai <= bbm_q1:
+        return "Boros"
+    elif nilai <= bbm_q2:
+        return "Sedang"
+    else:
+        return "Hemat"
+
+# =====================================================
+# INPUT USER – BAGIAN B
+# PREDIKSI KONSUMSI BBM MOTOR BARU
+# =====================================================
+st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
+
+input_B = {}
+for i, col in enumerate(X_B.columns):
+    input_B[col] = st.number_input(
+        label=f"Input {col}",
+        value=float(df[col].median()),
+        key=f"B_{i}_{col}"
     )
 
-    scaler_B = StandardScaler()
-    X_train_B = scaler_B.fit_transform(X_train_B)
-    X_test_B = scaler_B.transform(X_test_B)
+if st.button("⛽ Prediksi Konsumsi BBM"):
+    input_df_B = pd.DataFrame([input_B])
+    pred_bbm = bagging_reg.predict(input_df_B)[0]
+    kategori = kategori_bbm(pred_bbm)
 
-    bagging = BaggingRegressor(
-        estimator=DecisionTreeRegressor(),
-        n_estimators=200,
-        random_state=42
+    st.success(
+        f"🔋 Kategori Konsumsi BBM: {kategori}\n"
+        f"(Estimasi: {pred_bbm:.2f} km/l)"
     )
 
-    bagging.fit(X_train_B, y_train_B)
-    y_pred_B = bagging.predict(X_test_B)
+# =====================================================
+# SEGMENTASI KONSUMSI BBM
+# =====================================================
+segment_labels = ["Boros", "Sedang", "Hemat"]
 
-    st.subheader("📊 Evaluasi Regresi Konsumsi BBM")
-    st.write("R² Score :", round(r2_score(y_test_B, y_pred_B), 3))
-    st.write("MAE      :", round(mean_absolute_error(y_test_B, y_pred_B), 2))
+df_segment = pd.DataFrame({
+    "Aktual_BBM": y_test_B.values,
+    "Prediksi_BBM": y_pred_B
+})
 
-    # =====================================================
-    # BATAS SEGMENTASI KONSUMSI BBM (BERDASARKAN DATA)
-    # =====================================================
-    bbm_q1 = df["konsumsiBBM"].quantile(0.33)
-    bbm_q2 = df["konsumsiBBM"].quantile(0.66)
+df_segment["Segment_BBM"] = pd.qcut(
+    df_segment["Prediksi_BBM"],
+    q=3,
+    labels=segment_labels
+)
 
-    def kategori_bbm(nilai):
-        if nilai <= bbm_q1:
-            return "Boros"
-        elif nilai <= bbm_q2:
-            return "Sedang"
-        else:
-            return "Hemat"
+st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
 
-    # =====================================================
-    # INPUT USER – BAGIAN B
-    # =====================================================
-    st.subheader("⛽ Prediksi Konsumsi BBM Motor (Input User)")
-
-    input_B = {}
-    for i, col in enumerate(X_B.columns):
-        input_B[col] = st.number_input(
-            label=f"Input {col}",
-            value=float(df[col].median()),
-            key=f"B_{i}_{col}"
-        )
-
-    if st.button("⛽ Prediksi Konsumsi BBM"):
-        input_df_B = pd.DataFrame([input_B])
-        input_scaled_B = scaler_B.transform(input_df_B)
-        pred_bbm = bagging.predict(input_scaled_B)[0]
-        kategori = kategori_bbm(pred_bbm)
-
-        st.success(
-            f"🔋 Kategori Konsumsi BBM: {kategori}\n"
-            f"(Estimasi: {pred_bbm:.2f} km/l)"
-        )
-
-    # =====================================================
-    # SEGMENTASI KONSUMSI BBM
-    # =====================================================
-    segment_labels = ["Boros", "Sedang", "Hemat"]
-
-    df_segment = pd.DataFrame({
-        "Aktual_BBM": y_test_B.values,
-        "Prediksi_BBM": y_pred_B
-    })
-
-    df_segment["Segment_BBM"] = pd.qcut(
-        df_segment["Prediksi_BBM"],
-        q=3,
-        labels=segment_labels
-    )
-
-    st.subheader("📊 Segmentasi Motor Berdasarkan Konsumsi BBM")
-
-    fig1, ax1 = plt.subplots()
-    df_segment["Segment_BBM"].value_counts().reindex(segment_labels).plot(
-        kind="bar", ax=ax1
-    )
-    ax1.set_xlabel("Segment Konsumsi BBM")
-    ax1.set_ylabel("Jumlah Motor")
-    ax1.set_title("Distribusi Segmentasi Konsumsi BBM Motor")
-    st.pyplot(fig1)
+fig1, ax1 = plt.subplots()
+df_segment["Segment_BBM"].value_counts().reindex(segment_labels).plot(
+    kind="bar", ax=ax1
+)
+ax1.set_xlabel("Segment Konsumsi BBM")
+ax1.set_ylabel("Jumlah Motor")
+ax1.set_title("Distribusi Segmentasi Konsumsi BBM Motor")
+st.pyplot(fig1)
