@@ -85,66 +85,115 @@ if uploaded:
 
     # =====================================================
     # ======================= BAGIAN A =====================
-    # CATBOOST - KLASIFIKASI KATEGORI HARGA
+    # CATBOOST - KLASIFIKASI HARGA (BINARY)
     # =====================================================
-    st.header("🅰 Bagian A – Klasifikasi Harga (CatBoost)")
+    st.header("🅰 Bagian A – Klasifikasi Harga Motor (Binary CatBoost)")
 
+    # =====================================================
+    # TARGET BINARY (WAJIB)
+    # =====================================================
+    df["kategori_harga_binary"] = (
+        df["harga"] > df["harga"].median()
+    ).astype(int)
+
+    # =====================================================
+    # VISUALISASI TARGET
+    # =====================================================
     fig, ax = plt.subplots()
-    df["kategori_harga"].value_counts().sort_index().plot(kind="bar", ax=ax)
-    ax.set_xticklabels(["Rendah", "Sedang", "Tinggi"], rotation=0)
-    ax.set_title("Distribusi Kategori Harga")
+    df["kategori_harga_binary"].value_counts().sort_index().plot(
+        kind="bar", ax=ax
+    )
+    ax.set_xticklabels(["Murah", "Mahal"], rotation=0)
+    ax.set_title("Distribusi Kategori Harga (Binary)")
+    ax.set_ylabel("Jumlah Motor")
     st.pyplot(fig)
 
-    X_A = df.drop(["harga", "kategori_harga", "kategori_bbm"], axis=1)
-    y_A = df["kategori_harga"]
+    # =====================================================
+    # FEATURE & TARGET
+    # =====================================================
+    X_A = df.drop(
+        ["harga", "kategori_harga", "kategori_bbm", "kategori_harga_binary"],
+        axis=1
+    )
+    y_A = df["kategori_harga_binary"]
 
+    # =====================================================
+    # SPLIT DATA
+    # =====================================================
     X_train_A, X_test_A, y_train_A, y_test_A = train_test_split(
-        X_A, y_A, test_size=0.2, random_state=42, stratify=y_A
+        X_A, y_A,
+        test_size=0.2,
+        random_state=42,
+        stratify=y_A
     )
 
-    # ===============================
-    # MODEL CATBOOST
-    # ===============================
+    # =====================================================
+    # SCALING
+    # =====================================================
+    scaler_A = StandardScaler()
+    X_train_A = scaler_A.fit_transform(X_train_A)
+    X_test_A = scaler_A.transform(X_test_A)
+
+    # =====================================================
+    # MODEL CATBOOST (BINARY)
+    # =====================================================
     cat_model = CatBoostClassifier(
         iterations=300,
         learning_rate=0.1,
         depth=6,
-        loss_function="MultiClass",
-        verbose=False,
-        random_state=42
+        loss_function="Logloss",
+        eval_metric="Accuracy",
+        random_state=42,
+        verbose=False
     )
 
+    # =====================================================
+    # TRAIN MODEL
+    # =====================================================
     cat_model.fit(X_train_A, y_train_A)
+
+    # =====================================================
+    # PREDIKSI & EVALUASI
+    # =====================================================
     y_pred_A = cat_model.predict(X_test_A)
 
-    st.subheader("📊 Evaluasi CatBoost")
-    st.write("Accuracy:", accuracy_score(y_test_A, y_pred_A))
+    st.subheader("📊 Evaluasi CatBoost (Binary)")
+    st.write("Accuracy:", round(accuracy_score(y_test_A, y_pred_A), 3))
     st.text(classification_report(y_test_A, y_pred_A))
 
     cm = confusion_matrix(y_test_A, y_pred_A)
     fig_cm, ax_cm = plt.subplots()
     ax_cm.imshow(cm)
     ax_cm.set_title("Confusion Matrix")
+    ax_cm.set_xlabel("Predicted")
+    ax_cm.set_ylabel("Actual")
     st.pyplot(fig_cm)
 
     # =====================================================
     # INPUT USER – BAGIAN A
     # =====================================================
-    st.subheader("🔍 Prediksi Kategori Harga Motor")
+    st.subheader("🔍 Prediksi Harga Motor (Input User)")
 
     input_A = {}
     for col in X_A.columns:
         input_A[col] = st.number_input(
             f"{col}",
-            float(df[col].median())
+            value=float(df[col].median())
         )
 
-    if st.button("Prediksi Kategori Harga"):
+    if st.button("Prediksi Harga Motor"):
         input_df = pd.DataFrame([input_A])
-        pred = cat_model.predict(input_df)[0][0]
+        input_scaled = scaler_A.transform(input_df)
+        pred = cat_model.predict(input_scaled)[0]
 
-        label_map = {0: "Rendah", 1: "Sedang", 2: "Tinggi"}
-        st.success(f"💰 Kategori Harga: {label_map[pred]}")
+        hasil = "MAHAL 💸" if pred == 1 else "MURAH 💰"
+        st.success(f"Kategori Harga Motor: {hasil}")
+
+    st.caption(
+        "ℹ️ Kategori MAHAL jika harga di atas median dataset, "
+        "MURAH jika di bawah median."
+    )
+
 
     # =====================================================
     # ======================= BAGIAN B =====================
